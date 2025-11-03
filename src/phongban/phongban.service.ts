@@ -10,12 +10,12 @@ export class PhongbanService {
     private readonly pbRepo: Repository<PhongBan>,
   ) {}
 
-  // ✅ Lấy tất cả phòng ban + danh sách nhân viên trong đó
+  // Lấy tất cả phòng ban + danh sách nhân viên trong đó
   async findAll(): Promise<PhongBan[]> {
     return this.pbRepo.find({ relations: ['nhanViens'] }); 
   }
 
-  // ✅ Lấy 1 phòng ban theo ID
+  // Lấy 1 phòng ban theo ID
   async findOne(id: number): Promise<PhongBan> {
     const pb = await this.pbRepo.findOne({
       where: { maPB: id },
@@ -25,19 +25,18 @@ export class PhongbanService {
     return pb;
   }
 
-  // ✅ Tạo mới phòng ban
+  // Tạo mới phòng ban
   async create(data: Partial<PhongBan>): Promise<PhongBan> {
     const pb = this.pbRepo.create(data);
     const saved: PhongBan = await this.pbRepo.save(pb);
     return saved;
   }
 
-  // ✅ Cập nhật phòng ban
+  // Cập nhật phòng ban
   async update(id: number, data: Partial<PhongBan>): Promise<PhongBan> {
   try {
-    const pb = await this.findOne(id); // sẽ throw NotFoundException nếu không tồn tại
+    const pb = await this.findOne(id); 
 
-    // Chỉ update những field hợp lệ
     if (data.tenPhong !== undefined && data.tenPhong !== null && data.tenPhong !== '') {
       pb.tenPhong = data.tenPhong;
     }
@@ -47,12 +46,12 @@ export class PhongbanService {
     const saved = await this.pbRepo.save(pb);
     return saved;
   } catch (err) {
-    console.error('Lỗi update phòng ban:', err); // log ra console server để debug
-    throw err; // NestJS sẽ trả lỗi chính xác
+    console.error('Lỗi update phòng ban:', err); 
+    throw err; 
   }
 }
 
-  // ✅ Xóa phòng ban
+  // Xóa phòng ban
   async remove(id: number): Promise<{ message: string }> {
     const pb = await this.findOne(id);
     await this.pbRepo.remove(pb);

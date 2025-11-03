@@ -21,7 +21,7 @@ export class CalamviecService {
     private readonly nhanVienRepo: Repository<NhanVien>,
   ) {}
 
-  // ✅ Xác định ca hiện tại (chỉ ca đang hoạt động)
+  // Xác định ca hiện tại (chỉ ca đang hoạt động)
   async getCurrentShift(): Promise<CaLamViec | null> {
     const nowInVietnam = new Date(
       new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }),
@@ -61,7 +61,7 @@ export class CalamviecService {
     return null;
   }
 
-  // ✅ Lấy dữ liệu dashboard trong ngày theo giờ VN
+  // Lấy dữ liệu dashboard trong ngày theo giờ VN
   async getTodayShifts() {
     const nowInVietnam = new Date(
       new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }),

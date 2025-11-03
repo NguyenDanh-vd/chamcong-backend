@@ -50,5 +50,4 @@ export class NghiPhepService {
   if (!don) throw new NotFoundException('Không tìm thấy đơn nghỉ phép');
   return this.npRepo.remove(don);
 }
-
 }

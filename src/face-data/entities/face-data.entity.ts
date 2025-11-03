@@ -22,8 +22,9 @@ export class FaceData {
   @JoinColumn({ name: 'maNV' })
   nhanVien: NhanVien;
 
-  @Column({ type: 'longtext' })
-  faceDescriptor: string; // JSON.stringify(faceDescriptor array)
+  // ✅ Dùng kiểu jsonb để lưu mảng số nhận diện khuôn mặt
+  @Column({ type: 'jsonb' })
+  faceDescriptor: number[];
 
   @CreateDateColumn()
   ngayTao: Date;

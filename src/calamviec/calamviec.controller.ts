@@ -1,16 +1,14 @@
-// Thêm ParseIntPipe để validate ID
 import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { CalamviecService } from './calamviec.service';
 import { Roles } from '../common/roles.decorator';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 
-@Controller('calamviec') // Đổi tên controller để khớp với frontend
+@Controller('calamviec')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CalamviecController {
   constructor(private readonly calamviecService: CalamviecService) {}
 
-  // --- ROUTE CỤ THỂ ĐỂ LÊN TRÊN ---
   @Get('today')
   @Roles('quantrivien', 'nhansu')
   getTodayShifts() {

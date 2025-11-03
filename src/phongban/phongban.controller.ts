@@ -20,35 +20,35 @@ import { Public } from 'src/common/public.decorator';
 export class PhongbanController {
   constructor(private readonly phongbanService: PhongbanService) {}
 
-  // ✅ Lấy danh sách tất cả phòng ban
+  // Lấy danh sách tất cả phòng ban
   @Public()
    @Get()
   findAll() {
     return this.phongbanService.findAll();
   }
 
-  // ✅ Lấy chi tiết phòng ban theo ID
+  // Lấy chi tiết phòng ban theo ID
   @Roles('quantrivien', 'nhansu')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.phongbanService.findOne(id);
   }
 
-  // ✅ Tạo phòng ban mới
+  // Tạo phòng ban mới
   @Roles('quantrivien')
   @Post()
   create(@Body() body: any) {
     return this.phongbanService.create(body);
   }
 
-  // ✅ Cập nhật phòng ban
+  // Cập nhật phòng ban
   @Roles('quantrivien')
   @Put(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
     return this.phongbanService.update(id, body);
   }
 
-  // ✅ Xóa phòng ban
+  // Xóa phòng ban
   @Roles('quantrivien')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {

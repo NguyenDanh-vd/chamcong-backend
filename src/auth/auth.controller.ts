@@ -21,12 +21,12 @@ import { CreateNhanVienDto } from 'src/nhanvien/dto/create-nhanvien.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // ✅ Đăng ký với upload avatar
+  // Đăng ký với upload avatar
   @Post('register')
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: diskStorage({
-        destination: './uploads/avatars', // nhớ tạo thư mục này
+        destination: './uploads/avatars', 
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `avatar-${uniqueSuffix}${extname(file.originalname)}`);
@@ -70,20 +70,20 @@ export class AuthController {
     );
   }
 
-  // ✅ Đăng nhập
+  // Đăng nhập
   @Post('login')
   login(@Body('email') email: string, @Body('matKhau') matKhau: string) {
     return this.authService.login(email, matKhau);
   }
 
-  // ✅ Lấy profile
+  // Lấy profile
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
     return this.authService.getProfile(req.user.email);
   }
 
-  // ✅ Đổi mật khẩu
+  // Đổi mật khẩu
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(
@@ -94,13 +94,13 @@ export class AuthController {
     return this.authService.changePassword(req.user.email, oldPassword, newPassword);
   }
 
-  // ✅ Quên mật khẩu (gửi mail reset)
+  // Quên mật khẩu (gửi mail reset)
   @Post('forgot-password')
   forgotPassword(@Body('email') email: string) {
     return this.authService.forgotPassword(email);
   }
 
-  // ✅ Reset mật khẩu bằng token
+  // Reset mật khẩu bằng token
   @Post('reset-password')
   resetPassword(
     @Body('token') token: string,

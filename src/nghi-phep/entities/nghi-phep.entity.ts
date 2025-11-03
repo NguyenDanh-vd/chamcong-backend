@@ -25,7 +25,6 @@ export class NghiPhep {
   @CreateDateColumn()
   ngayTao: Date;
 
-  // Trong nhanvien.entity.ts
   @OneToMany(() => NghiPhep, np => np.nhanVien)
   nghiPhep: NghiPhep[];
 

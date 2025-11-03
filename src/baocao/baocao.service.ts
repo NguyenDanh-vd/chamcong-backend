@@ -31,44 +31,36 @@ export class BaoCaoService {
     maNV?: number,
     maPB?: number,
   ) {
-    qb.leftJoinAndSelect(`${alias}.nhanVien`, 'nv').leftJoinAndSelect(
-      'nv.phongBan',
-      'pb',
-    );
+    qb.leftJoinAndSelect(`${alias}.nhanVien`, 'nv').leftJoinAndSelect('nv.phongBan', 'pb');
     if (maNV) qb.andWhere('nv.maNV = :maNV', { maNV });
     if (maPB) qb.andWhere('pb.maPB = :maPB', { maPB });
     return qb;
   }
 
   // ==================== BÁO CÁO THÁNG ====================
-  async tongHopThang(
-    thang: number,
-    nam: number,
-    maNV?: number,
-    maPB?: number,
-  ): Promise<ReportItem[]> {
+  async tongHopThang(thang: number, nam: number, maNV?: number, maPB?: number): Promise<ReportItem[]> {
     const chamCongQuery = this.ccRepo.createQueryBuilder('cc');
     this.filterByNhanVien(chamCongQuery, 'cc', maNV, maPB);
-    chamCongQuery.where('MONTH(cc.gioVao) = :thang AND YEAR(cc.gioVao) = :nam', {
-      thang,
-      nam,
-    });
+    chamCongQuery.where(
+      'EXTRACT(MONTH FROM cc.gioVao) = :thang AND EXTRACT(YEAR FROM cc.gioVao) = :nam',
+      { thang, nam },
+    );
     const chamCong = await chamCongQuery.getMany();
 
     const nghiPhepQuery = this.npRepo.createQueryBuilder('np');
     this.filterByNhanVien(nghiPhepQuery, 'np', maNV, maPB);
     nghiPhepQuery.where(
-      'MONTH(np.ngayBatDau) = :thang AND YEAR(np.ngayBatDau) = :nam',
+      'EXTRACT(MONTH FROM np.ngayBatDau) = :thang AND EXTRACT(YEAR FROM np.ngayBatDau) = :nam',
       { thang, nam },
     );
     const nghiPhep = await nghiPhepQuery.getMany();
 
     const lamThemQuery = this.ltRepo.createQueryBuilder('lt');
     this.filterByNhanVien(lamThemQuery, 'lt', maNV, maPB);
-    lamThemQuery.where('MONTH(lt.ngayLT) = :thang AND YEAR(lt.ngayLT) = :nam', {
-      thang,
-      nam,
-    });
+    lamThemQuery.where(
+      'EXTRACT(MONTH FROM lt.ngayLT) = :thang AND EXTRACT(YEAR FROM lt.ngayLT) = :nam',
+      { thang, nam },
+    );
     const lamThem = await lamThemQuery.getMany();
 
     // Lấy danh sách nhân viên để đảm bảo ai cũng có trong báo cáo
@@ -104,24 +96,20 @@ export class BaoCaoService {
   }
 
   // ==================== BÁO CÁO NĂM ====================
-  async tongHopNam(
-    nam: number,
-    maNV?: number,
-    maPB?: number,
-  ): Promise<ReportItem[]> {
+  async tongHopNam(nam: number, maNV?: number, maPB?: number): Promise<ReportItem[]> {
     const chamCongQuery = this.ccRepo.createQueryBuilder('cc');
     this.filterByNhanVien(chamCongQuery, 'cc', maNV, maPB);
-    chamCongQuery.where('YEAR(cc.gioVao) = :nam', { nam });
+    chamCongQuery.where('EXTRACT(YEAR FROM cc.gioVao) = :nam', { nam });
     const chamCong = await chamCongQuery.getMany();
 
     const nghiPhepQuery = this.npRepo.createQueryBuilder('np');
     this.filterByNhanVien(nghiPhepQuery, 'np', maNV, maPB);
-    nghiPhepQuery.where('YEAR(np.ngayBatDau) = :nam', { nam });
+    nghiPhepQuery.where('EXTRACT(YEAR FROM np.ngayBatDau) = :nam', { nam });
     const nghiPhep = await nghiPhepQuery.getMany();
 
     const lamThemQuery = this.ltRepo.createQueryBuilder('lt');
     this.filterByNhanVien(lamThemQuery, 'lt', maNV, maPB);
-    lamThemQuery.where('YEAR(lt.ngayLT) = :nam', { nam });
+    lamThemQuery.where('EXTRACT(YEAR FROM lt.ngayLT) = :nam', { nam });
     const lamThem = await lamThemQuery.getMany();
 
     const nhanVienQuery = this.nvRepo.createQueryBuilder('nv').leftJoinAndSelect('nv.phongBan', 'pb');
@@ -162,7 +150,7 @@ export class BaoCaoService {
 
     const titleRow = sheet.addRow([title]);
     titleRow.font = { size: 16, bold: true };
-    sheet.mergeCells(1, 1, 1, 4); // merge từ cột 1 đến cột 4 (tự động hơn có thể lấy từ headerRow.cellCount)
+    sheet.mergeCells(1, 1, 1, 4);
     titleRow.alignment = { horizontal: 'center' };
     sheet.addRow([]);
 
@@ -180,15 +168,12 @@ export class BaoCaoService {
       });
     });
 
-    // Fix lỗi eachCell possibly undefined
     sheet.columns.forEach((col) => {
       if (!col || typeof col.eachCell !== 'function') return;
       let maxLength = 0;
       col.eachCell({ includeEmpty: true }, (cell) => {
         const columnLength = cell.value ? cell.value.toString().length : 10;
-        if (columnLength > maxLength) {
-          maxLength = columnLength;
-        }
+        if (columnLength > maxLength) maxLength = columnLength;
       });
       col.width = maxLength < 10 ? 10 : maxLength + 2;
     });
@@ -209,12 +194,7 @@ export class BaoCaoService {
     const printer = new PdfPrinter(fonts);
     const tableBody = [
       [{ text: 'Nhân viên', bold: true }, { text: 'Ngày công', bold: true }, { text: 'Ngày nghỉ', bold: true }, { text: 'Giờ làm thêm', bold: true }],
-      ...data.map((item) => [
-        item.hoTen,
-        item.ngayCong,
-        item.ngayNghi,
-        item.gioLamThem, // giữ nguyên số, không ép .toFixed(2)
-      ]),
+      ...data.map((item) => [item.hoTen, item.ngayCong, item.ngayNghi, item.gioLamThem]),
     ];
     const docDef = {
       content: [

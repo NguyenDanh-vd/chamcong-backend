@@ -22,10 +22,10 @@ export class ChamCong {
   @JoinColumn({ name: 'maCa' })
   caLamViec: CaLamViec;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   gioVao: Date;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   gioRa: Date;
 
   @Column({ type: 'float', nullable: true, default: null })

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { ConfigModule } from '@nestjs/config'; // <-- BƯỚC 1: IMPORT CONFIG MODULE
+import { ConfigModule } from '@nestjs/config'; 
 import { MAIL_CONFIG } from './mail.config';
 
-// Các module trong hệ thống
+// Import các module khác...
 import { AuthModule } from './auth/auth.module';
 import { NhanvienModule } from './nhanvien/nhanvien.module';
 import { PhongbanModule } from './phongban/phongban.module';
@@ -18,23 +18,36 @@ import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
-    // --- BƯỚC 2: THÊM CONFIG MODULE VÀO ĐẦU DANH SÁCH IMPORTS ---
     ConfigModule.forRoot({
-      isGlobal: true, // Rất quan trọng, giúp các module khác sử dụng được ConfigService
-    }),
-    
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: '',
-      database: 'itglobal',
-      autoLoadEntities: true,
-      synchronize: false,
+      isGlobal: true,
     }),
 
-    // ✅ Cấu hình MailerModule
+    // Đây là phần TypeORM “2 chế độ” bạn hỏi
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        const isRender = !!process.env.RENDER;
+        return isRender
+          ? {
+              type: 'postgres',
+              url: process.env.DATABASE_URL,
+              autoLoadEntities: true,
+              synchronize: false,
+              ssl: { rejectUnauthorized: false },
+            }
+          : {
+              type: 'postgres',
+              host: 'localhost',
+              port: 5432,
+              username: 'postgres',
+              password: '0706',
+              database: 'itglobal',
+              autoLoadEntities: true,
+              synchronize: true,
+            };
+      },
+    }),
+
+    // Mailer và các module khác
     MailerModule.forRoot({
       transport: {
         host: 'smtp.gmail.com',
@@ -50,7 +63,6 @@ import { DashboardModule } from './dashboard/dashboard.module';
       },
     }),
 
-    // Import các module đã tạo
     AuthModule,
     NhanvienModule,
     PhongbanModule,

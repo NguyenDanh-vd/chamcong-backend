@@ -59,10 +59,10 @@ export class NhanvienController {
     hoTen: userFromDb.hoTen,
     email: userFromDb.email,
     soDienThoai: userFromDb.soDienThoai,
-    gioiTinh: userFromDb.gioiTinh, // ✅ thêm
+    gioiTinh: userFromDb.gioiTinh, 
     tuoi: userFromDb.tuoi,
     diaChi: userFromDb.diaChi,
-    cccd: userFromDb.cccd, // 👈 thêm CCCD
+    cccd: userFromDb.cccd,
     ngayBatDau: userFromDb.ngayBatDau, 
     role: userFromDb.vaiTro,
     phongBan: userFromDb.phongBan, 
@@ -118,9 +118,6 @@ export class NhanvienController {
     );
   }
 
-  // ==========================================================
-  // ======> ĐOẠN CODE MỚI ĐƯỢC THÊM VÀO TẠI ĐÂY <======
-  // ==========================================================
   @Roles(VaiTro.QUANTRIVIEN) // Chỉ có Quản trị viên được dùng chức năng này
   @Patch(':id/reset-password-admin')
   resetPasswordByAdmin(
@@ -130,12 +127,8 @@ export class NhanvienController {
     if (!body.newPassword || body.newPassword.length < 6) {
       throw new BadRequestException('Mật khẩu mới phải có ít nhất 6 ký tự');
     }
-    // Bạn cần tạo hàm 'resetPasswordByAdmin' trong NhanvienService
     return this.nhanvienService.resetPasswordByAdmin(id, body.newPassword);
   }
-  // ==========================================================
-  // ==========================================================
-
 
   @Roles(VaiTro.QUANTRIVIEN, VaiTro.NHANSU, VaiTro.NHANVIEN)
   @Post(':id/avatar')
@@ -170,7 +163,6 @@ export class NhanvienController {
     @Request() req: any,
   ) {
 
-    // THÊM DÒNG NÀY ĐỂ DEBUG
     console.log('DEBUG: User performing action:', req.user);
 
     if (req.user.role !== VaiTro.QUANTRIVIEN && req.user.maNV !== id) {
@@ -178,8 +170,7 @@ export class NhanvienController {
     }
     if (!file) throw new BadRequestException('Chưa upload file hợp lệ');
 
-    console.log('Upload avatar:', file); // 👈 log để debug
-
+    console.log('Upload avatar:', file); 
     // chỉ lưu tên file vào DB
     return this.nhanvienService.updateAvatar(id, file.filename);
   }

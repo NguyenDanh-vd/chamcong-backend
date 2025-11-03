@@ -4,11 +4,10 @@ import { DashboardService } from './dashboard.service';
 import { DashboardController } from './dashboard.controller';
 import { NhanVien } from '../nhanvien/entities/nhanvien.entity';
 import { ChamCong } from '../chamcong/entities/chamcong.entity';
-import { NghiPhep } from '../nghi-phep/entities/nghi-phep.entity'; // Giả sử bạn có entity này
+import { NghiPhep } from '../nghi-phep/entities/nghi-phep.entity';
 
 @Module({
   imports: [
-    // Cung cấp các repository cần thiết cho DashboardService
     TypeOrmModule.forFeature([NhanVien, ChamCong, NghiPhep]),
   ],
   controllers: [DashboardController],

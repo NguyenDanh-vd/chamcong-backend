@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between} from 'typeorm';
 import { FaceData } from './entities/face-data.entity';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 import { ChamCong } from 'src/chamcong/entities/chamcong.entity';
@@ -22,7 +22,7 @@ export class FaceDataService {
     private caRepo: Repository<CaLamViec>,
   ) {}
 
-  // ⚡️ Giờ Việt Nam
+  //  Giờ Việt Nam
   private getVietnamTime(date = new Date()) {
     const vnOffsetMs = 7 * 60 * 60 * 1000;
     return new Date(date.getTime() + vnOffsetMs);
@@ -61,10 +61,10 @@ export class FaceDataService {
     if (!fd) {
       fd = this.fdRepo.create({
         nhanVien: nv,
-        faceDescriptor: JSON.stringify(faceDescriptor),
+        faceDescriptor,
       });
     } else {
-      fd.faceDescriptor = JSON.stringify(faceDescriptor);
+      fd.faceDescriptor = faceDescriptor;
     }
 
     await this.fdRepo.save(fd);
@@ -84,7 +84,7 @@ export class FaceDataService {
 
     for (const fd of allFaceData) {
       try {
-        const storedDescriptor: number[] = JSON.parse(fd.faceDescriptor);
+        const storedDescriptor: number[] = fd.faceDescriptor;
         const distance = this.euclideanDistance(faceDescriptor, storedDescriptor);
         if (distance < threshold) {
           return fd.nhanVien.maNV;

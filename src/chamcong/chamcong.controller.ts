@@ -25,28 +25,28 @@ import { FilterChamCongDto } from './dto/filter-chamcong.dto';
 export class ChamcongController {
   constructor(private readonly chamcongService: ChamcongService) {}
 
-  // ✅ Nhân viên check-in
+  // Nhân viên check-in
   @Roles('nhanvien', 'quantrivien', 'nhansu')
   @Post('checkin')
   checkIn(@Body() body: { maNV: number; maCa?: number }) {
     return this.chamcongService.checkIn(body);
   }
 
-  // ✅ Nhân viên check-out
+  // Nhân viên check-out
   @Roles('nhanvien', 'quantrivien', 'nhansu')
   @Post('checkout')
   checkOut(@Body() body: { maNV: number }) {
     return this.chamcongService.checkOut(body.maNV);
   }
 
-  // ✅ Chấm công bằng khuôn mặt
+  // Chấm công bằng khuôn mặt
   @Roles('nhanvien')
   @Post('point-face')
   pointFace(@Body() dto: PointFaceDto) {
     return this.chamcongService.pointWithFace(dto);
   }
 
-  // ✅ Lịch sử cá nhân
+  // Lịch sử cá nhân
   @Roles('nhanvien', 'quantrivien', 'nhansu')
   @Get('me')
   getMyChamCong(@Request() req: any) {
@@ -54,14 +54,14 @@ export class ChamcongController {
     return this.chamcongService.getByNhanVien(maNV);
   }
 
-  // ✅ Admin lấy danh sách
+  // Admin lấy danh sách
   @Get('admin-all')
   @Roles('quantrivien', 'nhansu')
   findAllForAdmin(@Query() query: FilterChamCongDto) {
     return this.chamcongService.filterChamCong(query);
   }
 
-  // ✅ Lịch sử của nhân viên cụ thể
+  // Lịch sử của nhân viên cụ thể
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('nhanvien/:maNV')
   getByNhanVien(@Param('maNV', ParseIntPipe) maNV: number) {
@@ -88,13 +88,13 @@ export class ChamcongController {
     return this.chamcongService.filterChamCong(query);
   }
 
-  // ✅ Trạng thái hôm nay
+  // Trạng thái hôm nay
   @Get('status/:maNV')
   getTodayStatus(@Param('maNV', ParseIntPipe) maNV: number) {
     return this.chamcongService.getTodayStatus(maNV);
   }
 
-  // ✅ Bản ghi hôm nay
+  // Bản ghi hôm nay
   @Get('today/:maNV')
   async getTodayRecordByMaNV(@Param('maNV', ParseIntPipe) maNV: number) {
     return this.chamcongService.getTodayRecord(maNV);

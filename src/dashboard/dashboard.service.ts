@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, IsNull, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { NhanVien } from '../nhanvien/entities/nhanvien.entity';
 import { ChamCong } from '../chamcong/entities/chamcong.entity';
-import { NghiPhep } from '../nghi-phep/entities/nghi-phep.entity'; // Giả sử bạn có entity này
+import { NghiPhep } from '../nghi-phep/entities/nghi-phep.entity'; 
 
 @Injectable()
 export class DashboardService {
@@ -13,7 +13,7 @@ export class DashboardService {
     @InjectRepository(ChamCong)
     private readonly chamCongRepo: Repository<ChamCong>,
     @InjectRepository(NghiPhep)
-    private readonly nghiPhepRepo: Repository<NghiPhep>, // Giả sử bạn có repo này
+    private readonly nghiPhepRepo: Repository<NghiPhep>, 
   ) {}
 
   async getDashboardStats() {

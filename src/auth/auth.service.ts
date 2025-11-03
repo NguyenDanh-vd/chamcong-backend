@@ -21,7 +21,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  // ✅ Đăng ký
+  // Đăng ký
   async register(
     hoTen: string,
     email: string,
@@ -33,7 +33,7 @@ export class AuthService {
     vaiTro: VaiTro = VaiTro.NHANVIEN,
     cccd?: string,
     ngayBatDau?: Date,
-    avatarFileName?: string, // THÊM THAM SỐ NÀY
+    avatarFileName?: string, 
     maPB?: any, 
   ) {
     if (!Object.values(VaiTro).includes(vaiTro)) {
@@ -56,7 +56,7 @@ export class AuthService {
       diaChi,
       cccd,
       ngayBatDau,
-      avatar: avatarFileName, // THÊM DÒNG NÀY
+      avatar: avatarFileName, 
       phongBan: maPB ? { maPB: maPB } : undefined,
     });
 
@@ -84,9 +84,9 @@ export class AuthService {
       role: nv.vaiTro,
       hoTen: nv.hoTen,
       maNV: nv.maNV,
-      cccd: nv.cccd,                  // 👈 Thêm vào response
+      cccd: nv.cccd,                  
       ngayBatDau: nv.ngayBatDau,
-      gioiTinh: nv.gioiTinh || null,  // ✅ Thêm giới tính
+      gioiTinh: nv.gioiTinh || null, 
       tuoi: nv.tuoi || null, 
       avatarUrl: nv.avatar
     ? `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/avatars/${nv.avatar}`
@@ -94,17 +94,17 @@ export class AuthService {
     };
   }
 
-  // ✅ Lấy thông tin profile
+  // Lấy thông tin profile
   async getProfile(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Không tìm thấy người dùng');
     return {
       ...nv,
-      role: nv.vaiTro, // thêm trường role
+      role: nv.vaiTro, 
     };
   }
 
-  // ✅ Đổi mật khẩu
+  // Đổi mật khẩu
   async changePassword(email: string, oldPassword: string, newPassword: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Không tìm thấy người dùng');
@@ -118,7 +118,7 @@ export class AuthService {
     return { message: 'Đổi mật khẩu thành công' };
   }
 
-  // ✅ Quên mật khẩu (gửi token reset qua email)
+  // Quên mật khẩu (gửi token reset qua email)
   async forgotPassword(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new NotFoundException('Email không tồn tại');
@@ -153,7 +153,7 @@ export class AuthService {
     return { message: 'Link đặt lại mật khẩu đã được gửi vào email của bạn' };
   }
 
-  // ✅ Đặt lại mật khẩu
+  // Đặt lại mật khẩu
   async resetPassword(token: string, newPassword: string) {
     try {
       const payload: any = await this.jwtService.verifyAsync(token, {

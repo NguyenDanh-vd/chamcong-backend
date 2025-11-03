@@ -28,7 +28,7 @@ export class NhanVien {
   @Column({ length: 20, nullable: true })
   soDienThoai?: string;
 
-  @Column({ type: 'text', nullable: true }) // Kiểu 'text' cho địa chỉ dài
+  @Column({ type: 'text', nullable: true }) 
   diaChi: string;
   
   @Column()
@@ -37,19 +37,15 @@ export class NhanVien {
   @Column({ nullable: true })
   avatar?: string;
 
-  // 👇 Thêm CCCD
   @Column({ length: 20, unique: true, nullable: true })
   cccd?: string;
 
-  // 👇 Thêm ngày bắt đầu làm việc
   @Column({ type: 'date', nullable: true })
   ngayBatDau?: Date;
 
-  // ✅ Thêm giới tính
   @Column({ type: 'enum', enum: ['Nam', 'Nữ', 'Khác'], nullable: true })
   gioiTinh?: 'Nam' | 'Nữ' | 'Khác';
 
-  // ✅ Thêm tuổi
   @Column({ type: 'int', nullable: true })
   tuoi?: number;
   

@@ -28,7 +28,7 @@ export class CreateNhanVienDto {
   soDienThoai?: string;
 
   @IsString({ message: 'Địa chỉ phải là một chuỗi' })
-  @IsOptional() // Cho phép để trống, không bắt buộc
+  @IsOptional() 
   diaChi?: string;
   
   // 👇 Thêm CCCD

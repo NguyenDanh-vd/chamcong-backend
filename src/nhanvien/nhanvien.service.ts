@@ -123,9 +123,6 @@ export class NhanvienService {
     return { message: 'Đổi mật khẩu thành công', maNV };
   }
   
-  // ==========================================================
-  // ======> HÀM MỚI ĐƯỢC THÊM VÀO TẠI ĐÂY <======
-  // ==========================================================
   async resetPasswordByAdmin(id: number, newPassword: string) {
     // Dùng lại hàm có sẵn để tìm nhân viên, nếu không thấy sẽ tự báo lỗi
     const nv = await this.findOneEntity(id);
@@ -138,8 +135,6 @@ export class NhanvienService {
 
     return { message: `Đặt lại mật khẩu cho nhân viên ID ${id} thành công` };
   }
-  // ==========================================================
-  // ==========================================================
 
   async updateAvatar(id: number, filename: string) {
     const nv = await this.findOneEntity(id);
@@ -147,9 +142,6 @@ export class NhanvienService {
     if (!filename) {
       throw new BadRequestException('Không tìm thấy file upload');
     }
-
-    // Nếu trước đó có avatar cũ thì có thể xóa file cũ (nếu muốn)
-    // fs.unlinkSync(join(__dirname, '..', '..', 'uploads', 'avatars', nv.avatar));
 
     nv.avatar = filename;
     await this.nvRepo.save(nv);
