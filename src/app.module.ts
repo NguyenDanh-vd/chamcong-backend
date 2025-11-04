@@ -15,6 +15,7 @@ import { LamThemModule } from './lam-them/lam-them.module';
 import { FaceDataModule } from './face-data/face-data.module';
 import { BaoCaoModule } from './baocao/baocao.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
               type: 'postgres',
               url: process.env.DATABASE_URL,
               autoLoadEntities: true,
-              synchronize: false,
+              synchronize: true,
               ssl: { rejectUnauthorized: false },
             }
           : {
@@ -73,6 +74,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     FaceDataModule,
     BaoCaoModule,
     DashboardModule,
+    AiModule,
   ],
 })
 export class AppModule {}

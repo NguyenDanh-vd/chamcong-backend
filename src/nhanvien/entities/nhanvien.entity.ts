@@ -14,7 +14,7 @@ import { PhongBan } from 'src/phongban/entities/phongban.entity';
 import { FaceData } from 'src/face-data/entities/face-data.entity';
 
 import { VaiTro } from '../enums/vai-tro.enum';
-@Entity('nhanvien')
+@Entity({ name: 'nhanvien', schema: 'public' })
 export class NhanVien {
   @PrimaryGeneratedColumn({ name: 'maNV' })
   maNV: number;
