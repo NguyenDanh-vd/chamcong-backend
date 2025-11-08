@@ -12,6 +12,7 @@ import { ChamCong } from 'src/chamcong/entities/chamcong.entity';
 import { LamThem } from 'src/lam-them/entities/lam-them.entity';
 import { PhongBan } from 'src/phongban/entities/phongban.entity';
 import { FaceData } from 'src/face-data/entities/face-data.entity';
+import { Luong } from 'src/luong/entities/luong.entity';
 
 import { VaiTro } from '../enums/vai-tro.enum';
 @Entity({ name: 'nhanvien', schema: 'public' })
@@ -74,4 +75,12 @@ export class NhanVien {
 
   @CreateDateColumn()
   ngayTao: Date;
+  @OneToMany(() => Luong, (luong) => luong.nhanVien)
+  luong: Luong[];
+
+  @Column({ type: 'float', nullable: true, default: 10000000 })
+  luongCoBan: number;
+
+  @Column({ type: 'float', nullable: true, default: 30000 })
+  luongTheoGio: number;
 }

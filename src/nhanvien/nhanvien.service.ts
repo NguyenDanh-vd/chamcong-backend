@@ -24,7 +24,8 @@ export class NhanvienService {
 
   async findAll(maPB?: number): Promise<NhanVien[]> {
     const query = this.nvRepo.createQueryBuilder('nv')
-      .leftJoinAndSelect('nv.phongBan', 'phongBan');
+      .leftJoinAndSelect('nv.phongBan', 'phongBan')
+      .orderBy('nv.maNV', 'ASC');
 
     if (maPB) {
       query.where('phongBan.maPB = :maPB', { maPB });
@@ -158,5 +159,21 @@ export class NhanvienService {
     await this.nvRepo.remove(nv);
     return { message: `Đã xóa nhân viên id=${id}` };
   }
+
+  async getProfile(email: string) {
+  const nv = await this.nvRepo.findOne({
+    where: { email },
+    relations: ['phongBan'],
+  });
+  if (!nv) throw new NotFoundException('Không tìm thấy nhân viên');
+
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const avatarUrl = nv.avatar
+    ? `${baseUrl}/uploads/avatars/${nv.avatar}`
+    : null;
+
+  const { matKhau, ...safeNv } = nv;
+  return { ...safeNv, avatarUrl };
+}
 
 }

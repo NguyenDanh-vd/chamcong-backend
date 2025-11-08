@@ -16,6 +16,7 @@ import { FaceDataModule } from './face-data/face-data.module';
 import { BaoCaoModule } from './baocao/baocao.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AiModule } from './ai/ai.module';
+import { LuongModule } from './luong/luong.module';
 
 @Module({
   imports: [
@@ -23,45 +24,15 @@ import { AiModule } from './ai/ai.module';
       isGlobal: true,
     }),
 
-    // Đây là phần TypeORM “2 chế độ” bạn hỏi
-    TypeOrmModule.forRootAsync({
-      useFactory: () => {
-        const isRender = !!process.env.RENDER;
-        return isRender
-          ? {
-              type: 'postgres',
-              url: process.env.DATABASE_URL,
-              autoLoadEntities: true,
-              synchronize: true,
-              ssl: { rejectUnauthorized: false },
-            }
-          : {
-              type: 'postgres',
-              host: 'localhost',
-              port: 5432,
-              username: 'postgres',
-              password: '0706',
-              database: 'itglobal',
-              autoLoadEntities: true,
-              synchronize: true,
-            };
-      },
-    }),
-
-    // Mailer và các module khác
-    MailerModule.forRoot({
-      transport: {
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: {
-          user: MAIL_CONFIG.user,
-          pass: MAIL_CONFIG.pass,
-        },
-      },
-      defaults: {
-        from: '"No Reply" <noreply@example.com>',
-      },
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: 'postgres',
+      password: '0706',
+      database: 'itglobal',
+      autoLoadEntities: true,
+      synchronize: false,
     }),
 
     AuthModule,
@@ -75,6 +46,7 @@ import { AiModule } from './ai/ai.module';
     BaoCaoModule,
     DashboardModule,
     AiModule,
+    LuongModule,
   ],
 })
 export class AppModule {}
