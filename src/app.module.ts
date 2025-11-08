@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { ConfigModule } from '@nestjs/config'; 
 import { MAIL_CONFIG } from './mail.config';
 
-// Import các module khác...
+// Các module khác
 import { AuthModule } from './auth/auth.module';
 import { NhanvienModule } from './nhanvien/nhanvien.module';
 import { PhongbanModule } from './phongban/phongban.module';
@@ -24,15 +24,22 @@ import { LuongModule } from './luong/luong.module';
       isGlobal: true,
     }),
 
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: '0706',
-      database: 'itglobal',
-      autoLoadEntities: true,
-      synchronize: false,
+    // Cấu hình TypeORM dùng DATABASE_URL từ .env
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const dbUrl = configService.get<string>('DATABASE_URL');
+        return {
+          type: 'postgres',
+          url: dbUrl,      // dùng DATABASE_URL
+          autoLoadEntities: true,
+          synchronize: false, // production nên false
+          ssl: {
+            rejectUnauthorized: false, // cần nếu DB Neon yêu cầu SSL
+          },
+        };
+      },
     }),
 
     AuthModule,
