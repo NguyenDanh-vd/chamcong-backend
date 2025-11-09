@@ -28,20 +28,28 @@ import { LuongModule } from './luong/luong.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const dbUrl = configService.get<string>('DATABASE_URL');
+      useFactory: (config: ConfigService) => {
+        const dbUrl = config.get<string>('DATABASE_URL');
+          if (!dbUrl) {
+            throw new Error('DATABASE_URL is missing. Add it to your .env (local) or env vars (Render).');
+          }
+
+        const u = new URL(dbUrl);
+        const useSSL =
+        u.hostname.endsWith('neon.tech') ||
+        u.searchParams.get('sslmode') === 'require';
+
         return {
           type: 'postgres',
-          url: dbUrl,      // dùng DATABASE_URL
+          url: dbUrl,
           autoLoadEntities: true,
-          synchronize: false, // production nên false
-          ssl: {
-            rejectUnauthorized: false, // cần nếu DB Neon yêu cầu SSL
-          },
+          synchronize: false,
+          ssl: useSSL ? { rejectUnauthorized: false } : false,
+          ...(useSSL ? { extra: { ssl: { rejectUnauthorized: false } } } : {}),
         };
       },
     }),
-
+    
     AuthModule,
     NhanvienModule,
     PhongbanModule,
