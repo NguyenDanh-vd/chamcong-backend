@@ -89,7 +89,7 @@ export class AuthService {
       gioiTinh: nv.gioiTinh || null, 
       tuoi: nv.tuoi || null, 
       avatarUrl: nv.avatar
-    ? `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/avatars/${nv.avatar}`
+    ? `${process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com'}/uploads/avatars/${nv.avatar}`
     : null,
     };
   }
@@ -98,9 +98,18 @@ export class AuthService {
   async getProfile(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Không tìm thấy người dùng');
+
+    const BASE = process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com';
     return {
-      ...nv,
-      role: nv.vaiTro, 
+      maNV: nv.maNV,
+      email: nv.email,
+      hoTen: nv.hoTen,
+      role: nv.vaiTro,
+      gioiTinh: nv.gioiTinh || null,
+      tuoi: nv.tuoi || null,
+      cccd: nv.cccd,
+      ngayBatDau: nv.ngayBatDau,
+      avatarUrl: nv.avatar ? `${BASE}/uploads/avatars/${nv.avatar}` : null,
     };
   }
 
