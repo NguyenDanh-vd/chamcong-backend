@@ -19,8 +19,18 @@ export class LamThem {
   @Column({ type: 'time' })
   gioKetThuc: string;
 
-  @Column({ type: 'int' })
-  soGio: number;
+  @Column({
+  type: 'numeric',
+  precision: 5,
+  scale: 2,
+  default: 0,
+  transformer: {
+    to: (value: number) => value,
+    from: (value: string) => parseFloat(value),
+  },
+})
+soGio: number;
+
 
   @Column({ nullable: true })
   ghiChu: string;
