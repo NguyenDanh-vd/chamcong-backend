@@ -66,4 +66,16 @@ export class FaceDataController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.faceDataService.remove(id);
   }
+
+  /** Kiểm tra chính mình đã đăng ký FaceID chưa */
+@Roles('nhanvien', 'nhansu', 'quantrivien')
+@Get('check-me')
+async checkMe(@Request() req: any) {
+  const maNV = req.user?.maNV;
+  if (!maNV) {
+    throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
+  }
+  return this.faceDataService.checkFace(maNV); // { hasFace: true/false }
+}
+
 }
