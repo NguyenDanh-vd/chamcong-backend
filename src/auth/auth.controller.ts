@@ -108,4 +108,9 @@ export class AuthController {
   ) {
     return this.authService.resetPassword(token, newPassword);
   }
+  
+  @Post('login-face')
+  async loginFace(@Body('descriptor') descriptor: number[]) {
+    return this.authService.loginFace(descriptor);
+  }
 }

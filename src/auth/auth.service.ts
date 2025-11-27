@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
+import { FaceData } from 'src/face-data/entities/face-data.entity'; 
 import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -18,8 +19,67 @@ import * as nodemailer from 'nodemailer';
 export class AuthService {
   constructor(
     @InjectRepository(NhanVien) private nvRepo: Repository<NhanVien>,
+    // Inject thêm FaceData Repo để lấy dữ liệu khuôn mặt so sánh
+    @InjectRepository(FaceData) private faceDataRepo: Repository<FaceData>,
     private jwtService: JwtService,
   ) {}
+
+  // --- Hàm hỗ trợ tính khoảng cách giữa 2 vector khuôn mặt (Euclidean Distance) ---
+  private getEuclideanDistance(face1: number[], face2: number[]): number {
+    return Math.sqrt(
+      face1
+        .map((val, i) => val - face2[i])
+        .reduce((sum, diff) => sum + diff * diff, 0),
+    );
+  }
+
+  // ✅ Đăng nhập bằng Face ID (MỚI)
+  async loginFace(descriptor: number[]) {
+    const allFaces = await this.faceDataRepo.find({
+      relations: ['nhanVien'], 
+    });
+
+    const threshold = 0.5;
+    let foundUser: NhanVien | null = null;
+
+    for (const faceRecord of allFaces) {
+      let storedDescriptor: number[];
+      if (typeof faceRecord.faceDescriptor === 'string') {
+        storedDescriptor = JSON.parse(faceRecord.faceDescriptor);
+      } else {
+        storedDescriptor = faceRecord.faceDescriptor;
+      }
+
+      const distance = this.getEuclideanDistance(descriptor, storedDescriptor);
+
+      if (distance < threshold) {
+        foundUser = faceRecord.nhanVien;
+        break; 
+      }
+    }
+
+    if (!foundUser) {
+      throw new UnauthorizedException('Khuôn mặt không khớp với nhân viên nào');
+    }
+
+    const payload = {
+      maNV: foundUser.maNV,
+      email: foundUser.email,
+      role: foundUser.vaiTro,
+      hoTen: foundUser.hoTen,
+    };
+    const token = await this.jwtService.signAsync(payload);
+
+    return {
+      access_token: token,
+      role: foundUser.vaiTro,
+      hoTen: foundUser.hoTen,
+      maNV: foundUser.maNV,
+      avatarUrl: foundUser.avatar
+        ? `${process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com'}/uploads/avatars/${foundUser.avatar}`
+        : null,
+    };
+  }
 
   // Đăng ký
   async register(
@@ -33,8 +93,8 @@ export class AuthService {
     vaiTro: VaiTro = VaiTro.NHANVIEN,
     cccd?: string,
     ngayBatDau?: Date,
-    avatarFileName?: string, 
-    maPB?: any, 
+    avatarFileName?: string,
+    maPB?: any,
   ) {
     if (!Object.values(VaiTro).includes(vaiTro)) {
       throw new BadRequestException('Vai trò không hợp lệ');
@@ -56,14 +116,14 @@ export class AuthService {
       diaChi,
       cccd,
       ngayBatDau,
-      avatar: avatarFileName, 
+      avatar: avatarFileName,
       phongBan: maPB ? { maPB: maPB } : undefined,
     });
 
     return this.nvRepo.save(nv);
   }
 
-  // ✅ Đăng nhập
+  // ✅ Đăng nhập thường
   async login(email: string, matKhau: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Sai email hoặc mật khẩu');
@@ -84,13 +144,13 @@ export class AuthService {
       role: nv.vaiTro,
       hoTen: nv.hoTen,
       maNV: nv.maNV,
-      cccd: nv.cccd,                  
+      cccd: nv.cccd,
       ngayBatDau: nv.ngayBatDau,
-      gioiTinh: nv.gioiTinh || null, 
-      tuoi: nv.tuoi || null, 
+      gioiTinh: nv.gioiTinh || null,
+      tuoi: nv.tuoi || null,
       avatarUrl: nv.avatar
-    ? `${process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com'}/uploads/avatars/${nv.avatar}`
-    : null,
+        ? `${process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com'}/uploads/avatars/${nv.avatar}`
+        : null,
     };
   }
 
@@ -127,12 +187,11 @@ export class AuthService {
     return { message: 'Đổi mật khẩu thành công' };
   }
 
-  // Quên mật khẩu (gửi token reset qua email)
+  // Quên mật khẩu
   async forgotPassword(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new NotFoundException('Email không tồn tại');
 
-    // Tạo token reset (15 phút)
     const token = await this.jwtService.signAsync(
       { email },
       {
@@ -143,7 +202,6 @@ export class AuthService {
 
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-    // Gửi email bằng nodemailer
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
