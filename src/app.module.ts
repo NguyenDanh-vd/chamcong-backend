@@ -4,7 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { MAIL_CONFIG } from './mail.config';
 
-// Các module khác
 import { AuthModule } from './auth/auth.module';
 import { NhanvienModule } from './nhanvien/nhanvien.module';
 import { PhongbanModule } from './phongban/phongban.module';
@@ -24,7 +23,8 @@ import { LuongModule } from './luong/luong.module';
       isGlobal: true,
     }),
 
-    // Cấu hình TypeORM dùng DATABASE_URL từ .env
+    MailerModule.forRoot(MAIL_CONFIG),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
