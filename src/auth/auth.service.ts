@@ -11,7 +11,6 @@ import { FaceData } from 'src/face-data/entities/face-data.entity';
 import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { MAIL_CONFIG } from 'src/mail.config';
 import { resetPasswordTemplate } from 'src/email-templates/reset-password';
 import * as nodemailer from 'nodemailer';
 
@@ -44,10 +43,13 @@ export class AuthService {
 
     for (const faceRecord of allFaces) {
       let storedDescriptor: number[];
-      if (typeof faceRecord.faceDescriptor === 'string') {
-        storedDescriptor = JSON.parse(faceRecord.faceDescriptor);
+      // Ép kiểu as any để tránh lỗi TypeScript nếu DB lưu JSON string
+      const rawDescriptor = faceRecord.faceDescriptor as any;
+
+      if (typeof rawDescriptor === 'string') {
+        storedDescriptor = JSON.parse(rawDescriptor);
       } else {
-        storedDescriptor = faceRecord.faceDescriptor;
+        storedDescriptor = rawDescriptor;
       }
 
       const distance = this.getEuclideanDistance(descriptor, storedDescriptor);
@@ -186,7 +188,7 @@ export class AuthService {
 
     return { message: 'Đổi mật khẩu thành công' };
   }
-
+  
   // Quên mật khẩu
   async forgotPassword(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
@@ -195,7 +197,7 @@ export class AuthService {
     const token = await this.jwtService.signAsync(
       { email },
       {
-        secret: process.env.RESET_SECRET || process.env.JWT_SECRET,
+        secret: process.env.JWT_SECRET || 'secret', 
         expiresIn: '15m',
       },
     );
@@ -205,13 +207,13 @@ export class AuthService {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: MAIL_CONFIG.user,
-        pass: MAIL_CONFIG.pass,
+        user: process.env.MAIL_USER, 
+        pass: process.env.MAIL_PASS, 
       },
     });
 
     await transporter.sendMail({
-      from: `"ITGlobal Support" <${MAIL_CONFIG.user}>`,
+      from: `"ITGlobal Support" <${process.env.MAIL_USER}>`, 
       to: email,
       subject: 'Đặt lại mật khẩu - ITGlobal',
       html: resetPasswordTemplate(resetLink, nv.hoTen),
@@ -224,7 +226,7 @@ export class AuthService {
   async resetPassword(token: string, newPassword: string) {
     try {
       const payload: any = await this.jwtService.verifyAsync(token, {
-        secret: process.env.RESET_SECRET || process.env.JWT_SECRET,
+        secret: process.env.JWT_SECRET || 'secret',
       });
 
       const nv = await this.nvRepo.findOne({ where: { email: payload.email } });
