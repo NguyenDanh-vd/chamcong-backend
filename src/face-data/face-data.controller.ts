@@ -21,7 +21,27 @@ import { RegisterFaceDto, PointFaceDto } from './dto/create-face-datum.dto';
 export class FaceDataController {
   constructor(private readonly faceDataService: FaceDataService) {}
 
-  /** Đăng ký hoặc cập nhật FaceID */
+   //API Đăng ký FaceID từ Mobile
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
+  @Post('register-mobile')
+  async registerFaceMobile(@Body() body: { maNV: number; imageBase64: string }) {
+    if (!body.maNV || !body.imageBase64) {
+      throw new BadRequestException('Thiếu thông tin maNV hoặc ảnh (imageBase64)');
+    }
+    return this.faceDataService.registerFaceFromMobile(body.maNV, body.imageBase64);
+  }
+
+   //API Chấm công từ Mobile
+  @Roles('nhanvien')
+  @Post('point-mobile')
+  async pointFaceMobile(@Body() body: { maNV: number; imageBase64: string; maCa: number }) {
+    if (!body.maNV || !body.imageBase64 || !body.maCa) {
+      throw new BadRequestException('Thiếu dữ liệu chấm công (maNV, imageBase64, maCa)');
+    }
+    return this.faceDataService.pointFaceMobile(body.maNV, body.imageBase64, body.maCa);
+  }
+
+  /** Đăng ký hoặc cập nhật FaceID (WEB - Gửi vector) */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('register')
   async registerFace(@Request() req: any, @Body() dto: RegisterFaceDto) {
@@ -32,7 +52,7 @@ export class FaceDataController {
     return this.faceDataService.registerFace(maNV, dto.faceDescriptor);
   }
 
-  /** Chấm công bằng FaceID */
+  /** Chấm công bằng FaceID (WEB - Gửi vector) */
   @Roles('nhanvien')
   @Post('point')
   pointFace(@Body() dto: PointFaceDto) {
@@ -68,14 +88,13 @@ export class FaceDataController {
   }
 
   /** Kiểm tra chính mình đã đăng ký FaceID chưa */
-@Roles('nhanvien', 'nhansu', 'quantrivien')
-@Get('check-me')
-async checkMe(@Request() req: any) {
-  const maNV = req.user?.maNV;
-  if (!maNV) {
-    throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
+  @Get('check-me')
+  async checkMe(@Request() req: any) {
+    const maNV = req.user?.maNV;
+    if (!maNV) {
+      throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
+    }
+    return this.faceDataService.checkFace(maNV); 
   }
-  return this.faceDataService.checkFace(maNV); // { hasFace: true/false }
-}
-
 }

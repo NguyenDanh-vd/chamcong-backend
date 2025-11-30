@@ -1,13 +1,26 @@
-import { Injectable, NotFoundException} from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between} from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { FaceData } from './entities/face-data.entity';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 import { ChamCong } from 'src/chamcong/entities/chamcong.entity';
 import { CaLamViec } from 'src/calamviec/entities/calamviec.entity';
 
+// --- IMPORT THƯ VIỆN AI ---
+import * as faceapi from 'face-api.js';
+import * as tf from '@tensorflow/tfjs';
+import * as path from 'path';
+
+const canvas = require('canvas');
+const { Canvas, Image, ImageData, loadImage } = canvas;
+// --- CẤU HÌNH MÔI TRƯỜNG ---
+faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+
 @Injectable()
-export class FaceDataService {
+export class FaceDataService implements OnModuleInit {
+  // 👇 Biến kiểm tra model đã load chưa
+  private modelsLoaded = false;
+
   constructor(
     @InjectRepository(FaceData)
     private fdRepo: Repository<FaceData>,
@@ -21,6 +34,114 @@ export class FaceDataService {
     @InjectRepository(CaLamViec)
     private caRepo: Repository<CaLamViec>,
   ) {}
+
+  /** 1. Tự động load Model khi Server khởi động */
+  async onModuleInit() {
+    await this.loadModels();
+  }
+
+  private async loadModels() {
+    if (this.modelsLoaded) return;
+    const MODEL_URL = path.join(process.cwd(), 'models');
+    try {
+      console.log('⏳ Đang tải Face Models...');
+      await tf.ready();
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromDisk(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromDisk(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromDisk(MODEL_URL),
+      ]);
+      this.modelsLoaded = true;
+      console.log('✅ Face Models đã tải xong!');
+    } catch (error) {
+      console.error('❌ Lỗi tải Face Models:', error);
+    }
+  }
+
+  /** 2. Hàm phụ trợ: Chuyển ảnh Base64 -> Vector khuôn mặt */
+  private async processImageToDescriptor(imageBase64: string): Promise<Float32Array> {
+    if (!this.modelsLoaded) await this.loadModels();
+    try {
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      const imgBuffer = Buffer.from(base64Data, 'base64');
+      const img = await loadImage(imgBuffer);
+
+      const detection = await faceapi
+        .detectSingleFace(img as any)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        throw new BadRequestException('Không tìm thấy khuôn mặt trong ảnh.');
+      }
+      return detection.descriptor;
+    } catch (error) {
+      console.error("AI Error:", error);
+      throw new BadRequestException('Lỗi xử lý hình ảnh: ' + (error.message || error));
+    }
+  }
+
+  /** 3. API MỚI: Đăng ký từ Mobile */
+  async registerFaceFromMobile(maNV: number, imageBase64: string) {
+    const descriptorFloat32 = await this.processImageToDescriptor(imageBase64);
+    const faceDescriptor = Array.from(descriptorFloat32); 
+    // Gọi lại hàm cũ để lưu vào DB
+    return this.registerFace(maNV, faceDescriptor);
+  }
+
+  /** 4. API MỚI: Chấm công từ Mobile (So sánh 1:1 rồi chấm công) */
+  async pointFaceMobile(maNV: number, imageBase64: string, maCa: number) {
+    // A. Xác thực khuôn mặt
+    const storedFace = await this.fdRepo.findOne({ where: { nhanVien: { maNV } } });
+    if (!storedFace) throw new BadRequestException('Bạn chưa đăng ký khuôn mặt.');
+
+    const currentDescriptor = await this.processImageToDescriptor(imageBase64);
+    const distance = this.euclideanDistance(Array.from(currentDescriptor), storedFace.faceDescriptor);
+    
+    if (distance > 0.55) { 
+      throw new BadRequestException('Khuôn mặt không khớp. Vui lòng thử lại.');
+    }
+
+    const nv = await this.nvRepo.findOne({ where: { maNV } });
+    if (!nv) throw new NotFoundException('Nhân viên không tồn tại');
+
+    const ca = await this.caRepo.findOne({ where: { maCa } });
+    if (!ca) throw new NotFoundException('Ca làm việc không tồn tại');
+
+    const { startUTC, endUTC } = this.getTodayRangeUTC();
+
+    let record = await this.chamCongRepo.findOne({
+      where: { nhanVien: { maNV }, gioVao: Between(startUTC, endUTC) },
+      relations: ['nhanVien', 'caLamViec'],
+    });
+
+    if (!record) {
+      record = this.chamCongRepo.create({
+        nhanVien: nv,
+        caLamViec: ca,
+        gioVao: this.getVietnamTime(),
+        trangThai: 'chua-xac-nhan',
+        hinhThuc: 'faceid',
+      });
+      await this.chamCongRepo.save(record);
+      return { message: '✅ Check-in thành công', type: 'checkin' };
+    }
+
+    if (!record.gioRa) {
+      const now = this.getVietnamTime();
+      if (now.getTime() - record.gioVao.getTime() < 60000) {
+         return { message: '⏳ Vui lòng đợi 1 phút sau khi check-in', type: 'warn' };
+      }
+      record.gioRa = now;
+      const diffMs = record.gioRa.getTime() - record.gioVao.getTime();
+      record.soGioLam = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
+      record.trangThai = 'hop-le';
+      await this.chamCongRepo.save(record);
+      return { message: '✅ Check-out thành công', type: 'checkout' };
+    }
+
+    return { message: 'Hôm nay đã hoàn tất chấm công', type: 'done' };
+  }
 
   //  Giờ Việt Nam
   private getVietnamTime(date = new Date()) {
@@ -42,7 +163,7 @@ export class FaceDataService {
   /** Tính khoảng cách Euclidean */
   private euclideanDistance(desc1: number[], desc2: number[]): number {
     if (desc1.length !== desc2.length) {
-      throw new Error('Face descriptors must have the same length');
+      return 1.0; 
     }
     let sum = 0;
     for (let i = 0; i < desc1.length; i++) {
@@ -80,7 +201,7 @@ export class FaceDataService {
   /** Nhận diện khuôn mặt → trả về maNV nếu khớp */
   private async detectEmployee(faceDescriptor: number[]): Promise<number | null> {
     const allFaceData = await this.fdRepo.find({ relations: ['nhanVien'] });
-    const threshold = 0.6;
+    const threshold = 0.6; // Có thể giảm xuống 0.55 nếu muốn khắt khe hơn
 
     for (const fd of allFaceData) {
       try {
