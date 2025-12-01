@@ -1,5 +1,3 @@
-// src/auth/auth.controller.ts
-
 import {
   Controller,
   Post,
@@ -9,6 +7,8 @@ import {
   Request,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
+  UnauthorizedException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -16,10 +16,13 @@ import { extname } from 'path';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './auth.guard';
 import { CreateNhanVienDto } from 'src/nhanvien/dto/create-nhanvien.dto';
-
+import { FaceDataService } from 'src/face-data/face-data.service';
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private faceDataService: FaceDataService
+  ) {}
 
   // Đăng ký với upload avatar
   @Post('register')
@@ -113,4 +116,24 @@ export class AuthController {
   async loginFace(@Body('descriptor') descriptor: number[]) {
     return this.authService.loginFace(descriptor);
   }
+
+  // Thêm API Login mới vào AuthController
+@Post('login-face-mobile')
+async loginFaceMobile(@Body() body: { imageBase64: string }) {
+    if (!body.imageBase64) throw new BadRequestException("Thiếu ảnh");
+    
+    // 1. Nhờ FaceDataService tìm xem đây là ai
+    const maNV = await this.faceDataService.identifyUserFromImage(body.imageBase64); 
+    
+    if (!maNV) {
+        // Nếu không tìm thấy ai khớp trong DB
+        throw new UnauthorizedException("Khuôn mặt không khớp với bất kỳ ai.");
+    }
+
+    // 2. Lấy thông tin user và tạo token
+    const user = await this.authService.validateUserByMaNV(maNV); 
+    if (!user) throw new UnauthorizedException("Lỗi tài khoản.");
+
+    return this.authService.loginWithFace(user);
+}
 }

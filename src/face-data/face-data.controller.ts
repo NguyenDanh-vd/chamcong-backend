@@ -21,7 +21,30 @@ import { RegisterFaceDto, PointFaceDto } from './dto/create-face-datum.dto';
 export class FaceDataController {
   constructor(private readonly faceDataService: FaceDataService) {}
 
-  /** Đăng ký hoặc cập nhật FaceID (Nhận vector) */
+  /** * Đăng ký FaceID từ Mobile 
+   * Body: { maNV: 1, imageBase64: "data:image/jpeg;base64,..." }
+   */
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
+  @Post('register-mobile')
+  async registerFaceMobile(@Body() body: { maNV: number; imageBase64: string }) {
+    if (!body.maNV || !body.imageBase64) {
+      throw new BadRequestException('Thiếu thông tin maNV hoặc ảnh (imageBase64)');
+    }
+    return this.faceDataService.registerFaceFromMobile(body.maNV, body.imageBase64);
+  }
+
+  /** * Chấm công từ Mobile 
+   * Body: { maNV: 1, imageBase64: "...", maCa: 1 }
+   */
+  @Roles('nhanvien')
+  @Post('point-mobile')
+  async pointFaceMobile(@Body() body: { maNV: number; imageBase64: string; maCa: number }) {
+    if (!body.maNV || !body.imageBase64 || !body.maCa) {
+      throw new BadRequestException('Thiếu dữ liệu chấm công (maNV, imageBase64, maCa)');
+    }
+    return this.faceDataService.pointFaceMobile(body.maNV, body.imageBase64, body.maCa);
+  }
+
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('register')
   async registerFace(@Request() req: any, @Body() dto: RegisterFaceDto) {
@@ -29,32 +52,41 @@ export class FaceDataController {
     if (!maNV) {
       throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
     }
-    // Dữ liệu dto.faceDescriptor là mảng số
     return this.faceDataService.registerFace(maNV, dto.faceDescriptor);
   }
 
-  /** Chấm công bằng FaceID (Nhận vector) */
   @Roles('nhanvien')
   @Post('point')
   pointFace(@Body() dto: PointFaceDto) {
     return this.faceDataService.pointFace(dto.faceDescriptor, dto.maCa);
   }
 
-  /** Lấy dữ liệu FaceID của 1 nhân viên */
+  // --- CÁC API GET/DELETE CHUNG (DÙNG CHO CẢ 2) ---
+
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('nhanvien/:maNV')
   getByNhanVien(@Param('maNV', ParseIntPipe) maNV: number) {
     return this.faceDataService.getByNhanVien(maNV);
   }
 
-  /** Kiểm tra nhân viên đã đăng ký FaceID chưa */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('check/:maNV')
   checkFace(@Param('maNV', ParseIntPipe) maNV: number) {
     return this.faceDataService.checkFace(maNV);
   }
 
-  /** Kiểm tra chính mình */
+  @Roles('quantrivien')
+  @Delete('nhanvien/:maNV')
+  removeByNhanVien(@Param('maNV', ParseIntPipe) maNV: number) {
+    return this.faceDataService.removeByNhanVien(maNV);
+  }
+
+  @Roles('quantrivien')
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.faceDataService.remove(id);
+  }
+
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('check-me')
   async checkMe(@Request() req: any) {
@@ -63,19 +95,5 @@ export class FaceDataController {
       throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
     }
     return this.faceDataService.checkFace(maNV); 
-  }
-
-  /** Xóa toàn bộ FaceID của 1 nhân viên */
-  @Roles('quantrivien')
-  @Delete('nhanvien/:maNV')
-  removeByNhanVien(@Param('maNV', ParseIntPipe) maNV: number) {
-    return this.faceDataService.removeByNhanVien(maNV);
-  }
-
-  /** Xóa FaceID theo ID */
-  @Roles('quantrivien')
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.faceDataService.remove(id);
   }
 }

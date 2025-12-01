@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { resetPasswordTemplate } from 'src/email-templates/reset-password';
 import * as nodemailer from 'nodemailer';
+import { NhanvienService } from 'src/nhanvien/nhanvien.service';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +22,7 @@ export class AuthService {
     // Inject thêm FaceData Repo để lấy dữ liệu khuôn mặt so sánh
     @InjectRepository(FaceData) private faceDataRepo: Repository<FaceData>,
     private jwtService: JwtService,
+    private nhanVienService: NhanvienService,
   ) {}
 
   // --- Hàm hỗ trợ tính khoảng cách giữa 2 vector khuôn mặt (Euclidean Distance) ---
@@ -239,5 +241,29 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
     }
+  }
+
+  /** 1. Tìm user chỉ bằng mã NV (Dùng cho FaceID) */
+  async validateUserByMaNV(maNV: number): Promise<any> {
+    const user = await this.nhanVienService.findOne(maNV); 
+    if (user) {
+      return user;
+    }
+    return null;
+  }
+
+  /** 2. Tạo Token riêng cho FaceID (Fix lỗi TS2551) */
+  async loginWithFace(user: any) {
+    // Sử dụng user object đã được validate
+    const payload = { 
+        email: user.email, 
+        sub: user.maNV, 
+        role: user.vaiTro, 
+        maNV: user.maNV, 
+        hoTen: user.hoTen 
+    };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
   }
 }

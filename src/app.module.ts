@@ -21,6 +21,7 @@ import { LuongModule } from './luong/luong.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env.key', '.env'], 
     }),
 
     MailerModule.forRoot(MAIL_CONFIG),
