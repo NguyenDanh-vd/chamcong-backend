@@ -129,12 +129,6 @@ export class ChamcongController {
     // Gọi phương thức mới, an toàn và rõ ràng
     return this.chamcongService.getMyRecords(maNV, query);
   }
-
-  @Get('thongke/:maNV')
-  @Roles('nhanvien', 'nhansu', 'quantrivien')
-  async getThongKe(@Param('maNV', ParseIntPipe) maNV: number) {
-      return this.chamcongService.getThongKe(maNV);
-  }
 }
 
 

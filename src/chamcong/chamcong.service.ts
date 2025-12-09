@@ -428,28 +428,4 @@ export class ChamcongService {
     await this.chamCongRepo.remove(chamCong);
     return { deleted: true };
   }
-
-  async getThongKe(maNV: number) {
-    // 1. Lấy danh sách chấm công của nhân viên này
-    const list = await this.chamCongRepo.find({
-      where: { nhanVien: { maNV } },
-      relations: ['caLamViec'],
-    });
-
-    // 2. Tính toán đơn giản
-    const tongSoNgay = list.length;
-    const soNgayDiTre = list.filter((x) => x.trangThai === 'di-tre').length;
-    const soNgayVeSom = list.filter((x) => x.trangThai === 've-som').length;
-    const soNgayHopLe = list.filter((x) => x.trangThai === 'hop-le').length;
-
-    // 3. Trả về kết quả
-    return {
-      maNV,
-      tongSoNgay,
-      soNgayDiTre,
-      soNgayVeSom,
-      soNgayHopLe,
-      chiTiet: list 
-    };
-  }
 }
