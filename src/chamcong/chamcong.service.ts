@@ -210,65 +210,96 @@ export class ChamcongService {
   }
 
   // --- HÀM QUAN TRỌNG: CHẤM CÔNG BẰNG KHUÔN MẶT ---
+  // --- HÀM QUAN TRỌNG: CHẤM CÔNG BẰNG KHUÔN MẶT (ĐÃ SỬA) ---
   async pointWithFace(body: PointFaceDto) {
     const { maNV, maCa, latitude, longitude, faceDescriptor } = body;
 
-    // A. Kiểm tra cấu hình & vị trí GPS
+    // 1. Validate đầu vào từ Frontend
+    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
+       console.warn(`Vector gửi lên không hợp lệ. Length: ${faceDescriptor?.length}`);
+       throw new BadRequestException('Dữ liệu khuôn mặt gửi lên bị lỗi.');
+    }
+
+    // 2. Kiểm tra GPS
     const latStr = this.configService.get<string>('COMPANY_LATITUDE');
     const lonStr = this.configService.get<string>('COMPANY_LONGITUDE');
     const radiusStr = this.configService.get<string>('ALLOWED_CHECKIN_RADIUS_METERS');
 
     if (!latStr || !lonStr || !radiusStr) {
-      throw new BadRequestException(
-        'Server chưa cấu hình tọa độ công ty (COMPANY_LATITUDE, ...)',
-      );
+      throw new BadRequestException('Lỗi cấu hình hệ thống: Thiếu tọa độ công ty.');
     }
 
     const companyLat = parseFloat(latStr);
     const companyLon = parseFloat(lonStr);
     const allowedRadius = parseInt(radiusStr, 10);
 
-    const distance = this.calculateDistance(
-      latitude,
-      longitude,
-      companyLat,
-      companyLon,
-    );
+    const distance = this.calculateDistance(latitude, longitude, companyLat, companyLon);
+    console.log(`Khoảng cách: ${Math.round(distance)}m / Cho phép: ${allowedRadius}m`);
 
     if (distance > allowedRadius) {
       throw new BadRequestException(
-        `Bạn đang ở ngoài vùng chấm công. Khoảng cách: ${Math.round(distance)}m (Cho phép: ${allowedRadius}m).`,
+        `Bạn đang ở quá xa công ty (${Math.round(distance)}m). Vui lòng di chuyển vào vùng cho phép.`,
       );
     }
 
-    // B. Kiểm tra nhân viên
+    // 3. Lấy thông tin nhân viên
     const nhanVien = await this.nhanVienRepo.findOneBy({ maNV: maNV });
     if (!nhanVien) throw new NotFoundException('Không tìm thấy nhân viên');
 
-    // C. Kiểm tra khớp khuôn mặt (Face Matching)
-    // Lưu ý: Đảm bảo entity NhanVien có trường 'faceData' chứa dữ liệu vector
-    if (!nhanVien.faceData) {
-      throw new BadRequestException('Nhân viên chưa đăng ký dữ liệu khuôn mặt');
-    }
+    // --- PHẦN SỬA CHÍNH: XỬ LÝ DỮ LIỆU DATABASE ---
+    let savedFaceVector: number[] = [];
 
-    let savedFaceVector: number[];
     try {
-      // Nếu lưu trong DB là chuỗi JSON thì parse, nếu là object/array thì dùng luôn
-      savedFaceVector = typeof nhanVien.faceData === 'string'
-        ? JSON.parse(nhanVien.faceData)
-        : nhanVien.faceData;
-    } catch (e) {
-      throw new BadRequestException('Dữ liệu khuôn mặt trong hệ thống bị lỗi');
-    }
+      // a. Kiểm tra null/undefined
+      if (!nhanVien.faceData) {
+        throw new BadRequestException('Tài khoản này chưa đăng ký dữ liệu khuôn mặt (Face ID).');
+      }
 
+      let rawData = nhanVien.faceData;
+
+      // b. Nếu DB trả về String (JSON), thì parse ra
+      if (typeof rawData === 'string') {
+        try {
+            rawData = JSON.parse(rawData);
+        } catch (e) {
+            console.error("Lỗi JSON parse:", e);
+            throw new Error('Dữ liệu khuôn mặt trong DB bị lỗi định dạng chuỗi.');
+        }
+      }
+
+      // c. Chuẩn hóa về mảng số (number[])
+      if (Array.isArray(rawData)) {
+        savedFaceVector = rawData.map(Number); // Ép kiểu từng phần tử về số
+      } else if (typeof rawData === 'object' && rawData !== null) {
+        // Fix lỗi TypeORM/Postgres đôi khi trả về object dạng { '0': val, '1': val... }
+        savedFaceVector = Object.values(rawData).map(Number);
+      } else {
+         throw new Error('Định dạng dữ liệu không xác định.');
+      }
+
+      // d. Kiểm tra độ dài vector sau khi parse
+      if (savedFaceVector.length !== 128) {
+        throw new Error(`Dữ liệu vector trong DB bị sai kích thước (${savedFaceVector.length}).`);
+      }
+
+    } catch (e) {
+      console.error('Lỗi xử lý FaceData:', e.message);
+      throw new BadRequestException('Lỗi dữ liệu khuôn mặt hệ thống. Vui lòng liên hệ Admin.');
+    }
+    // --- KẾT THÚC PHẦN SỬA ---
+
+    // 5. So sánh khuôn mặt
     const diff = this.getEuclideanDistance(faceDescriptor, savedFaceVector);
-    const THRESHOLD = 0.5; // Ngưỡng chính xác (0.45 - 0.55 là tốt)
+    // Ngưỡng 0.45 - 0.5 là chuẩn cho face-api.js. 0.55 có thể hơi lỏng (dễ nhận nhầm)
+    const THRESHOLD = 0.5; 
+    
+    console.log(`>>> So sánh NV ${maNV}: Diff = ${diff.toFixed(4)} (Ngưỡng: ${THRESHOLD})`);
 
     if (diff > THRESHOLD) {
-      throw new BadRequestException('Khuôn mặt không khớp với dữ liệu hệ thống.');
+      throw new BadRequestException('Khuôn mặt không khớp. Vui lòng thử lại.');
     }
 
-    // D. Xử lý Check-in / Check-out
+    // 6. Logic Check-in / Check-out (Giữ nguyên logic của bạn)
     const { startOfDay, endOfDay } = this.getTodayRangeInVietnam();
     const existing = await this.chamCongRepo.findOne({
       where: {
@@ -277,28 +308,39 @@ export class ChamcongService {
       },
     });
 
+    // Case 1: Chưa Check-in
     if (!existing) {
       const record = await this.checkIn({ maNV: maNV, maCa: maCa });
-      return { action: 'checkin', message: 'Check-in thành công', data: record };
+      return { 
+          action: 'checkin', 
+          message: `Check-in thành công lúc ${record.gioVao.toLocaleTimeString('vi-VN')}`, 
+          data: record 
+      };
     }
 
+    // Case 2: Đã Check-in, Chưa Check-out
     if (!existing.gioRa) {
-      // Chặn spam check-out: Phải cách check-in ít nhất 1 phút
+      // Chặn spam check-out (Ví dụ 60 giây)
       const now = new Date();
       const diffMs = now.getTime() - existing.gioVao.getTime();
-      const minMinutes = 1; 
-
-      if (diffMs < minMinutes * 60 * 1000) {
-         throw new BadRequestException(
-           `Bạn vừa check-in. Vui lòng chờ ${minMinutes} phút để check-out.`
-         );
+      if (diffMs < 60 * 1000) {
+         throw new BadRequestException(`Bạn vừa check-in. Vui lòng đợi 1 phút để check-out.`);
       }
 
       const record = await this.checkOut(maNV);
-      return { action: 'checkout', message: 'Check-out thành công', data: record };
+      return { 
+          action: 'checkout', 
+          message: `Check-out thành công.`, 
+          data: record 
+      };
     }
 
-    throw new BadRequestException('Hôm nay đã hoàn tất chấm công.');
+    // Case 3: Đã xong hết
+    return {
+        action: 'completed',
+        message: 'Bạn đã hoàn thành chấm công hôm nay rồi.',
+        data: existing
+    };
   }
 
   // --- CÁC HÀM GET DỮ LIỆU KHÁC (GIỮ NGUYÊN) ---
