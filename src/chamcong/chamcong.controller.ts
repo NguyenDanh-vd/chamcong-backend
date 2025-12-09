@@ -131,9 +131,10 @@ export class ChamcongController {
   }
 
   @Get('thongke/:maNV')
-   async getThongKe(@Param('maNV') maNV: string) {
-    // Dấu + để chuyển string sang number
-     return this.chamcongService.getThongKe(+maNV);
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
+  async getThongKe(@Param('maNV', ParseIntPipe) maNV: number) {
+      return this.chamcongService.getThongKe(maNV);
   }
 }
+
 
