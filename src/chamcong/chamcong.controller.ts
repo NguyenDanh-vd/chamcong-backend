@@ -129,5 +129,11 @@ export class ChamcongController {
     // Gọi phương thức mới, an toàn và rõ ràng
     return this.chamcongService.getMyRecords(maNV, query);
   }
+
+  @Get('thongke/:maNV')
+   async getThongKe(@Param('maNV') maNV: string) {
+    // Dấu + để chuyển string sang number
+     return this.chamcongService.getThongKe(+maNV);
+  }
 }
 
