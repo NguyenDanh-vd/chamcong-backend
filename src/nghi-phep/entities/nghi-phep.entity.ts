@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn,OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 
 @Entity('nghiPhep')
@@ -25,7 +33,6 @@ export class NghiPhep {
   @CreateDateColumn()
   ngayTao: Date;
 
-  @OneToMany(() => NghiPhep, np => np.nhanVien)
+  @OneToMany(() => NghiPhep, (np) => np.nhanVien)
   nghiPhep: NghiPhep[];
-
 }

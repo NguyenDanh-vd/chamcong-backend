@@ -14,6 +14,8 @@ import { Roles } from 'src/common/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/common/roles.guard';
 import { Public } from 'src/common/public.decorator';
+import { CreatePhongbanDto } from './dto/create-phongban.dto';
+import { UpdatePhongbanDto } from './dto/update-phongban.dto';
 
 @Controller('phongban')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -22,7 +24,7 @@ export class PhongbanController {
 
   // Lấy danh sách tất cả phòng ban
   @Public()
-   @Get()
+  @Get()
   findAll() {
     return this.phongbanService.findAll();
   }
@@ -37,14 +39,17 @@ export class PhongbanController {
   // Tạo phòng ban mới
   @Roles('quantrivien')
   @Post()
-  create(@Body() body: any) {
+  create(@Body() body: CreatePhongbanDto) {
     return this.phongbanService.create(body);
   }
 
   // Cập nhật phòng ban
   @Roles('quantrivien')
   @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdatePhongbanDto,
+  ) {
     return this.phongbanService.update(id, body);
   }
 

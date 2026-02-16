@@ -31,14 +31,22 @@ export class BaoCaoService {
     maNV?: number,
     maPB?: number,
   ) {
-    qb.leftJoinAndSelect(`${alias}.nhanVien`, 'nv').leftJoinAndSelect('nv.phongBan', 'pb');
+    qb.leftJoinAndSelect(`${alias}.nhanVien`, 'nv').leftJoinAndSelect(
+      'nv.phongBan',
+      'pb',
+    );
     if (maNV) qb.andWhere('nv.maNV = :maNV', { maNV });
     if (maPB) qb.andWhere('pb.maPB = :maPB', { maPB });
     return qb;
   }
 
   // ==================== BÁO CÁO THÁNG ====================
-  async tongHopThang(thang: number, nam: number, maNV?: number, maPB?: number): Promise<ReportItem[]> {
+  async tongHopThang(
+    thang: number,
+    nam: number,
+    maNV?: number,
+    maPB?: number,
+  ): Promise<ReportItem[]> {
     const chamCongQuery = this.ccRepo.createQueryBuilder('cc');
     this.filterByNhanVien(chamCongQuery, 'cc', maNV, maPB);
     chamCongQuery.where(
@@ -64,15 +72,19 @@ export class BaoCaoService {
     const lamThem = await lamThemQuery.getMany();
 
     // Lấy danh sách nhân viên để đảm bảo ai cũng có trong báo cáo
-    const nhanVienQuery = this.nvRepo.createQueryBuilder('nv').leftJoinAndSelect('nv.phongBan', 'pb');
+    const nhanVienQuery = this.nvRepo
+      .createQueryBuilder('nv')
+      .leftJoinAndSelect('nv.phongBan', 'pb');
     if (maNV) nhanVienQuery.where('nv.maNV = :maNV', { maNV });
     if (maPB) nhanVienQuery.andWhere('pb.maPB = :maPB', { maPB });
     const nhanVienList = await nhanVienQuery.getMany();
 
     const baoCaoTongHop = nhanVienList.map((nv) => {
-      const ngayCong = chamCong.filter(cc => cc.nhanVien?.maNV === nv.maNV).length;
+      const ngayCong = chamCong.filter(
+        (cc) => cc.nhanVien?.maNV === nv.maNV,
+      ).length;
       const ngayNghi = nghiPhep
-        .filter(np => np.nhanVien?.maNV === nv.maNV)
+        .filter((np) => np.nhanVien?.maNV === nv.maNV)
         .reduce((total, np) => {
           const start = new Date(np.ngayBatDau);
           const end = new Date(np.ngayKetThuc);
@@ -81,7 +93,7 @@ export class BaoCaoService {
           return total + diffDays;
         }, 0);
       const gioLamThem = lamThem
-        .filter(lt => lt.nhanVien?.maNV === nv.maNV)
+        .filter((lt) => lt.nhanVien?.maNV === nv.maNV)
         .reduce((total, lt) => total + (lt.soGio || 0), 0);
 
       return {
@@ -96,7 +108,11 @@ export class BaoCaoService {
   }
 
   // ==================== BÁO CÁO NĂM ====================
-  async tongHopNam(nam: number, maNV?: number, maPB?: number): Promise<ReportItem[]> {
+  async tongHopNam(
+    nam: number,
+    maNV?: number,
+    maPB?: number,
+  ): Promise<ReportItem[]> {
     const chamCongQuery = this.ccRepo.createQueryBuilder('cc');
     this.filterByNhanVien(chamCongQuery, 'cc', maNV, maPB);
     chamCongQuery.where('EXTRACT(YEAR FROM cc.gioVao) = :nam', { nam });
@@ -112,15 +128,19 @@ export class BaoCaoService {
     lamThemQuery.where('EXTRACT(YEAR FROM lt.ngayLT) = :nam', { nam });
     const lamThem = await lamThemQuery.getMany();
 
-    const nhanVienQuery = this.nvRepo.createQueryBuilder('nv').leftJoinAndSelect('nv.phongBan', 'pb');
+    const nhanVienQuery = this.nvRepo
+      .createQueryBuilder('nv')
+      .leftJoinAndSelect('nv.phongBan', 'pb');
     if (maNV) nhanVienQuery.where('nv.maNV = :maNV', { maNV });
     if (maPB) nhanVienQuery.andWhere('pb.maPB = :maPB', { maPB });
     const nhanVienList = await nhanVienQuery.getMany();
 
     const baoCaoTongHop = nhanVienList.map((nv) => {
-      const ngayCong = chamCong.filter(cc => cc.nhanVien?.maNV === nv.maNV).length;
+      const ngayCong = chamCong.filter(
+        (cc) => cc.nhanVien?.maNV === nv.maNV,
+      ).length;
       const ngayNghi = nghiPhep
-        .filter(np => np.nhanVien?.maNV === nv.maNV)
+        .filter((np) => np.nhanVien?.maNV === nv.maNV)
         .reduce((total, np) => {
           const start = new Date(np.ngayBatDau);
           const end = new Date(np.ngayKetThuc);
@@ -129,7 +149,7 @@ export class BaoCaoService {
           return total + diffDays;
         }, 0);
       const gioLamThem = lamThem
-        .filter(lt => lt.nhanVien?.maNV === nv.maNV)
+        .filter((lt) => lt.nhanVien?.maNV === nv.maNV)
         .reduce((total, lt) => total + (lt.soGio || 0), 0);
 
       return {
@@ -154,17 +174,36 @@ export class BaoCaoService {
     titleRow.alignment = { horizontal: 'center' };
     sheet.addRow([]);
 
-    const headerRow = sheet.addRow(['Nhân viên', 'Ngày công', 'Ngày nghỉ', 'Giờ làm thêm']);
+    const headerRow = sheet.addRow([
+      'Nhân viên',
+      'Ngày công',
+      'Ngày nghỉ',
+      'Giờ làm thêm',
+    ]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
     });
 
     data.forEach((item) => {
       const row = sheet.addRow(Object.values(item));
       row.eachCell((cell) => {
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
       });
     });
 
@@ -188,13 +227,26 @@ export class BaoCaoService {
         normal: path.join(process.cwd(), 'src/assets/fonts/Roboto-Regular.ttf'),
         bold: path.join(process.cwd(), 'src/assets/fonts/Roboto-Medium.ttf'),
         italics: path.join(process.cwd(), 'src/assets/fonts/Roboto-Italic.ttf'),
-        bolditalics: path.join(process.cwd(), 'src/assets/fonts/Roboto-MediumItalic.ttf'),
+        bolditalics: path.join(
+          process.cwd(),
+          'src/assets/fonts/Roboto-MediumItalic.ttf',
+        ),
       },
     };
     const printer = new PdfPrinter(fonts);
     const tableBody = [
-      [{ text: 'Nhân viên', bold: true }, { text: 'Ngày công', bold: true }, { text: 'Ngày nghỉ', bold: true }, { text: 'Giờ làm thêm', bold: true }],
-      ...data.map((item) => [item.hoTen, item.ngayCong, item.ngayNghi, item.gioLamThem]),
+      [
+        { text: 'Nhân viên', bold: true },
+        { text: 'Ngày công', bold: true },
+        { text: 'Ngày nghỉ', bold: true },
+        { text: 'Giờ làm thêm', bold: true },
+      ],
+      ...data.map((item) => [
+        item.hoTen,
+        item.ngayCong,
+        item.ngayNghi,
+        item.gioLamThem,
+      ]),
     ];
     const docDef = {
       content: [
@@ -214,8 +266,16 @@ export class BaoCaoService {
     };
     const pdfDoc = printer.createPdfKitDocument(docDef);
     const chunks: Buffer[] = [];
+
+    const normalizeChunk = (chunk: unknown): Buffer => {
+      if (Buffer.isBuffer(chunk)) return chunk;
+      if (chunk instanceof Uint8Array) return Buffer.from(chunk);
+      if (typeof chunk === 'string') return Buffer.from(chunk);
+      throw new Error('PDF stream chunk has unsupported type');
+    };
+
     return new Promise<Buffer>((resolve, reject) => {
-      pdfDoc.on('data', (chunk) => chunks.push(chunk));
+      pdfDoc.on('data', (chunk: unknown) => chunks.push(normalizeChunk(chunk)));
       pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
       pdfDoc.on('error', reject);
       pdfDoc.end();

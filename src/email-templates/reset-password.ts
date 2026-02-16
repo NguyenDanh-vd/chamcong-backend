@@ -1,7 +1,7 @@
 export const resetPasswordTemplate = (resetLink: string, hoTen?: string) => {
   return `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-    <h2 style="color: #4f46e5;">Xin chào ${hoTen || "bạn"},</h2>
+    <h2 style="color: #4f46e5;">Xin chào ${hoTen || 'bạn'},</h2>
     <p>Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
     <p>Nhấn vào nút bên dưới để đặt lại mật khẩu (link sẽ hết hạn sau <b>15 phút</b>):</p>
     <div style="text-align: center; margin: 24px 0;">

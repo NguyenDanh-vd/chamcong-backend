@@ -12,6 +12,7 @@ import { CaLamViec } from 'src/calamviec/entities/calamviec.entity';
 
 // Import các DTO và Service liên quan
 import { CreateChamCongDto } from './dto/create-chamcong.dto';
+import { UpdateChamCongDto } from './dto/update-chamcong.dto';
 import { CalamviecService } from 'src/calamviec/calamviec.service';
 
 // Định nghĩa DTO ngay tại đây hoặc import từ file dto
@@ -131,7 +132,7 @@ export class ChamcongService {
 
   // 6. Tính khoảng cách Euclidean giữa 2 vector khuôn mặt
   private getEuclideanDistance(face1: number[], face2: number[]): number {
-    if (!face1 || !face2 || face1.length !== face2.length) return 1.0; 
+    if (!face1 || !face2 || face1.length !== face2.length) return 1.0;
     const sum = face1.reduce(
       (acc, val, i) => acc + Math.pow(val - face2[i], 2),
       0,
@@ -143,7 +144,13 @@ export class ChamcongService {
   // CÁC HÀM NGHIỆP VỤ CHÍNH
   // =================================================================
 
-  async checkIn({ maNV, maCa }: { maNV: number; maCa?: number }): Promise<ChamCong> {
+  async checkIn({
+    maNV,
+    maCa,
+  }: {
+    maNV: number;
+    maCa?: number;
+  }): Promise<ChamCong> {
     const nhanVien = await this.nhanVienRepo.findOneBy({ maNV });
     if (!nhanVien) throw new NotFoundException('Không tìm thấy nhân viên');
 
@@ -203,8 +210,7 @@ export class ChamcongService {
     }
 
     chamCong.soGioLam =
-      (chamCong.gioRa.getTime() - chamCong.gioVao.getTime()) /
-      (1000 * 60 * 60);
+      (chamCong.gioRa.getTime() - chamCong.gioVao.getTime()) / (1000 * 60 * 60);
 
     return this.chamCongRepo.save(chamCong);
   }
@@ -215,26 +221,43 @@ export class ChamcongService {
     const { maNV, maCa, latitude, longitude, faceDescriptor } = body;
 
     // 1. Validate đầu vào từ Frontend
-    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
-       console.warn(`Vector gửi lên không hợp lệ. Length: ${faceDescriptor?.length}`);
-       throw new BadRequestException('Dữ liệu khuôn mặt gửi lên bị lỗi.');
+    if (
+      !faceDescriptor ||
+      !Array.isArray(faceDescriptor) ||
+      faceDescriptor.length !== 128
+    ) {
+      console.warn(
+        `Vector gửi lên không hợp lệ. Length: ${faceDescriptor?.length}`,
+      );
+      throw new BadRequestException('Dữ liệu khuôn mặt gửi lên bị lỗi.');
     }
 
     // 2. Kiểm tra GPS
     const latStr = this.configService.get<string>('COMPANY_LATITUDE');
     const lonStr = this.configService.get<string>('COMPANY_LONGITUDE');
-    const radiusStr = this.configService.get<string>('ALLOWED_CHECKIN_RADIUS_METERS');
+    const radiusStr = this.configService.get<string>(
+      'ALLOWED_CHECKIN_RADIUS_METERS',
+    );
 
     if (!latStr || !lonStr || !radiusStr) {
-      throw new BadRequestException('Lỗi cấu hình hệ thống: Thiếu tọa độ công ty.');
+      throw new BadRequestException(
+        'Lỗi cấu hình hệ thống: Thiếu tọa độ công ty.',
+      );
     }
 
     const companyLat = parseFloat(latStr);
     const companyLon = parseFloat(lonStr);
     const allowedRadius = parseInt(radiusStr, 10);
 
-    const distance = this.calculateDistance(latitude, longitude, companyLat, companyLon);
-    console.log(`Khoảng cách: ${Math.round(distance)}m / Cho phép: ${allowedRadius}m`);
+    const distance = this.calculateDistance(
+      latitude,
+      longitude,
+      companyLat,
+      companyLon,
+    );
+    console.log(
+      `Khoảng cách: ${Math.round(distance)}m / Cho phép: ${allowedRadius}m`,
+    );
 
     if (distance > allowedRadius) {
       throw new BadRequestException(
@@ -252,7 +275,9 @@ export class ChamcongService {
     try {
       // a. Kiểm tra null/undefined
       if (!nhanVien.faceData) {
-        throw new BadRequestException('Tài khoản này chưa đăng ký dữ liệu khuôn mặt (Face ID).');
+        throw new BadRequestException(
+          'Tài khoản này chưa đăng ký dữ liệu khuôn mặt (Face ID).',
+        );
       }
 
       let rawData = nhanVien.faceData;
@@ -260,10 +285,10 @@ export class ChamcongService {
       // b. Nếu DB trả về String (JSON), thì parse ra
       if (typeof rawData === 'string') {
         try {
-            rawData = JSON.parse(rawData);
+          rawData = JSON.parse(rawData);
         } catch (e) {
-            console.error("Lỗi JSON parse:", e);
-            throw new Error('Dữ liệu khuôn mặt trong DB bị lỗi định dạng chuỗi.');
+          console.error('Lỗi JSON parse:', e);
+          throw new Error('Dữ liệu khuôn mặt trong DB bị lỗi định dạng chuỗi.');
         }
       }
 
@@ -274,26 +299,31 @@ export class ChamcongService {
         // Fix lỗi TypeORM/Postgres đôi khi trả về object dạng { '0': val, '1': val... }
         savedFaceVector = Object.values(rawData).map(Number);
       } else {
-         throw new Error('Định dạng dữ liệu không xác định.');
+        throw new Error('Định dạng dữ liệu không xác định.');
       }
 
       // d. Kiểm tra độ dài vector sau khi parse
       if (savedFaceVector.length !== 128) {
-        throw new Error(`Dữ liệu vector trong DB bị sai kích thước (${savedFaceVector.length}).`);
+        throw new Error(
+          `Dữ liệu vector trong DB bị sai kích thước (${savedFaceVector.length}).`,
+        );
       }
-
     } catch (e) {
       console.error('Lỗi xử lý FaceData:', e.message);
-      throw new BadRequestException('Lỗi dữ liệu khuôn mặt hệ thống. Vui lòng liên hệ Admin.');
+      throw new BadRequestException(
+        'Lỗi dữ liệu khuôn mặt hệ thống. Vui lòng liên hệ Admin.',
+      );
     }
     // --- KẾT THÚC PHẦN SỬA ---
 
     // 5. So sánh khuôn mặt
     const diff = this.getEuclideanDistance(faceDescriptor, savedFaceVector);
     // Ngưỡng 0.45 - 0.5 là chuẩn cho face-api.js. 0.55 có thể hơi lỏng (dễ nhận nhầm)
-    const THRESHOLD = 0.5; 
-    
-    console.log(`>>> So sánh NV ${maNV}: Diff = ${diff.toFixed(4)} (Ngưỡng: ${THRESHOLD})`);
+    const THRESHOLD = 0.5;
+
+    console.log(
+      `>>> So sánh NV ${maNV}: Diff = ${diff.toFixed(4)} (Ngưỡng: ${THRESHOLD})`,
+    );
 
     if (diff > THRESHOLD) {
       throw new BadRequestException('Khuôn mặt không khớp. Vui lòng thử lại.');
@@ -311,10 +341,10 @@ export class ChamcongService {
     // Case 1: Chưa Check-in
     if (!existing) {
       const record = await this.checkIn({ maNV: maNV, maCa: maCa });
-      return { 
-          action: 'checkin', 
-          message: `Check-in thành công lúc ${record.gioVao.toLocaleTimeString('vi-VN')}`, 
-          data: record 
+      return {
+        action: 'checkin',
+        message: `Check-in thành công lúc ${record.gioVao.toLocaleTimeString('vi-VN')}`,
+        data: record,
       };
     }
 
@@ -324,27 +354,29 @@ export class ChamcongService {
       const now = new Date();
       const diffMs = now.getTime() - existing.gioVao.getTime();
       if (diffMs < 60 * 1000) {
-         throw new BadRequestException(`Bạn vừa check-in. Vui lòng đợi 1 phút để check-out.`);
+        throw new BadRequestException(
+          `Bạn vừa check-in. Vui lòng đợi 1 phút để check-out.`,
+        );
       }
 
       const record = await this.checkOut(maNV);
-      return { 
-          action: 'checkout', 
-          message: `Check-out thành công.`, 
-          data: record 
+      return {
+        action: 'checkout',
+        message: `Check-out thành công.`,
+        data: record,
       };
     }
 
     // Case 3: Đã xong hết
     return {
-        action: 'completed',
-        message: 'Bạn đã hoàn thành chấm công hôm nay rồi.',
-        data: existing
+      action: 'completed',
+      message: 'Bạn đã hoàn thành chấm công hôm nay rồi.',
+      data: existing,
     };
   }
 
   // --- CÁC HÀM GET DỮ LIỆU KHÁC (GIỮ NGUYÊN) ---
-  
+
   async getTodayRecord(maNV: number): Promise<ChamCong | null> {
     try {
       const { startOfDay, endOfDay } = this.getTodayRangeInVietnam();
@@ -425,7 +457,9 @@ export class ChamcongService {
     if (query.tuNgay)
       qb.andWhere('cc.gioVao >= :tuNgay', { tuNgay: new Date(query.tuNgay) });
     if (query.denNgay)
-      qb.andWhere('cc.gioVao <= :denNgay', { denNgay: new Date(query.denNgay) });
+      qb.andWhere('cc.gioVao <= :denNgay', {
+        denNgay: new Date(query.denNgay),
+      });
     const list = await qb.orderBy('cc.gioVao', 'DESC').getMany();
     return list.map((c) => ({
       ...c,
@@ -434,7 +468,10 @@ export class ChamcongService {
     }));
   }
 
-  async getMyRecords(maNV: number, query: { trangThai?: string; tuNgay?: string; denNgay?: string }) {
+  async getMyRecords(
+    maNV: number,
+    query: { trangThai?: string; tuNgay?: string; denNgay?: string },
+  ) {
     const qb = this.chamCongRepo
       .createQueryBuilder('cc')
       .leftJoinAndSelect('cc.nhanVien', 'nv')
@@ -447,7 +484,9 @@ export class ChamcongService {
       qb.andWhere('cc.gioVao >= :tuNgay', { tuNgay: new Date(query.tuNgay) });
     }
     if (query.denNgay) {
-      qb.andWhere('cc.gioVao <= :denNgay', { denNgay: new Date(query.denNgay) });
+      qb.andWhere('cc.gioVao <= :denNgay', {
+        denNgay: new Date(query.denNgay),
+      });
     }
     const list = await qb.orderBy('cc.gioVao', 'DESC').getMany();
     return list.map((c) => ({
@@ -457,10 +496,19 @@ export class ChamcongService {
     }));
   }
 
-  async update(id: number, updateData: Partial<ChamCong>) {
+  async update(id: number, updateData: UpdateChamCongDto) {
     const chamCong = await this.chamCongRepo.findOneBy({ maCC: id });
     if (!chamCong) throw new NotFoundException('Không tìm thấy bản ghi');
-    Object.assign(chamCong, updateData);
+    const normalizedUpdateData = {
+      ...updateData,
+    } as Partial<ChamCong>;
+    if (typeof updateData.gioVao === 'string') {
+      normalizedUpdateData.gioVao = new Date(updateData.gioVao);
+    }
+    if (typeof updateData.gioRa === 'string') {
+      normalizedUpdateData.gioRa = new Date(updateData.gioRa);
+    }
+    Object.assign(chamCong, normalizedUpdateData);
     return this.chamCongRepo.save(chamCong);
   }
 

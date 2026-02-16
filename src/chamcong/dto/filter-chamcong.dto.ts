@@ -1,8 +1,8 @@
 import { IsOptional, IsString, IsNumberString } from 'class-validator';
 
 export class FilterChamCongDto {
-  @IsOptional() 
-  @IsString()   
+  @IsOptional()
+  @IsString()
   tuNgay?: string;
 
   @IsOptional()

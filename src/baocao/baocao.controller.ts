@@ -15,7 +15,12 @@ export class BaoCaoController {
     @Query('maNV') maNV?: number,
     @Query('maPB') maPB?: number,
   ) {
-    return this.baoCaoService.tongHopThang(+thang, +nam, maNV ? +maNV : undefined, maPB ? +maPB : undefined);
+    return this.baoCaoService.tongHopThang(
+      +thang,
+      +nam,
+      maNV ? +maNV : undefined,
+      maPB ? +maPB : undefined,
+    );
   }
 
   @Get('thang/export/excel')
@@ -26,11 +31,25 @@ export class BaoCaoController {
     @Query('maPB') maPB: number,
     @Res() res: Response,
   ) {
-    const data = await this.baoCaoService.tongHopThang(+thang, +nam, maNV ? +maNV : undefined, maPB ? +maPB : undefined);
-    const buffer = await this.baoCaoService.exportExcel(data, `BÁO CÁO THÁNG ${thang}/${nam}`);
+    const data = await this.baoCaoService.tongHopThang(
+      +thang,
+      +nam,
+      maNV ? +maNV : undefined,
+      maPB ? +maPB : undefined,
+    );
+    const buffer = await this.baoCaoService.exportExcel(
+      data,
+      `BÁO CÁO THÁNG ${thang}/${nam}`,
+    );
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=baocao-thang-${thang}-${nam}.xlsx`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=baocao-thang-${thang}-${nam}.xlsx`,
+    );
     res.end(buffer);
   }
 
@@ -42,11 +61,22 @@ export class BaoCaoController {
     @Query('maPB') maPB: number,
     @Res() res: Response,
   ) {
-    const data = await this.baoCaoService.tongHopThang(+thang, +nam, maNV ? +maNV : undefined, maPB ? +maPB : undefined);
-    const buffer = await this.baoCaoService.exportPDF(data, `BÁO CÁO THÁNG ${thang}/${nam}`);
+    const data = await this.baoCaoService.tongHopThang(
+      +thang,
+      +nam,
+      maNV ? +maNV : undefined,
+      maPB ? +maPB : undefined,
+    );
+    const buffer = await this.baoCaoService.exportPDF(
+      data,
+      `BÁO CÁO THÁNG ${thang}/${nam}`,
+    );
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=baocao-thang-${thang}-${nam}.pdf`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=baocao-thang-${thang}-${nam}.pdf`,
+    );
     res.end(buffer);
   }
 
@@ -58,7 +88,11 @@ export class BaoCaoController {
     @Query('maNV') maNV?: number,
     @Query('maPB') maPB?: number,
   ) {
-    return this.baoCaoService.tongHopNam(+nam, maNV ? +maNV : undefined, maPB ? +maPB : undefined);
+    return this.baoCaoService.tongHopNam(
+      +nam,
+      maNV ? +maNV : undefined,
+      maPB ? +maPB : undefined,
+    );
   }
 
   @Get('nam/export/excel')
@@ -68,11 +102,24 @@ export class BaoCaoController {
     @Query('maPB') maPB: number,
     @Res() res: Response,
   ) {
-    const data = await this.baoCaoService.tongHopNam(+nam, maNV ? +maNV : undefined, maPB ? +maPB : undefined);
-    const buffer = await this.baoCaoService.exportExcel(data, `BÁO CÁO NĂM ${nam}`);
+    const data = await this.baoCaoService.tongHopNam(
+      +nam,
+      maNV ? +maNV : undefined,
+      maPB ? +maPB : undefined,
+    );
+    const buffer = await this.baoCaoService.exportExcel(
+      data,
+      `BÁO CÁO NĂM ${nam}`,
+    );
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=baocao-nam-${nam}.xlsx`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=baocao-nam-${nam}.xlsx`,
+    );
     res.end(buffer);
   }
 
@@ -83,11 +130,21 @@ export class BaoCaoController {
     @Query('maPB') maPB: number,
     @Res() res: Response,
   ) {
-    const data = await this.baoCaoService.tongHopNam(+nam, maNV ? +maNV : undefined, maPB ? +maPB : undefined);
-    const buffer = await this.baoCaoService.exportPDF(data, `BÁO CÁO NĂM ${nam}`);
+    const data = await this.baoCaoService.tongHopNam(
+      +nam,
+      maNV ? +maNV : undefined,
+      maPB ? +maPB : undefined,
+    );
+    const buffer = await this.baoCaoService.exportPDF(
+      data,
+      `BÁO CÁO NĂM ${nam}`,
+    );
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=baocao-nam-${nam}.pdf`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=baocao-nam-${nam}.pdf`,
+    );
     res.end(buffer);
   }
 }

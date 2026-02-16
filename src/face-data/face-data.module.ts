@@ -8,7 +8,9 @@ import { ChamCong } from 'src/chamcong/entities/chamcong.entity';
 import { CaLamViec } from 'src/calamviec/entities/calamviec.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FaceData, NhanVien,ChamCong, CaLamViec])],
+  imports: [
+    TypeOrmModule.forFeature([FaceData, NhanVien, ChamCong, CaLamViec]),
+  ],
   providers: [FaceDataService],
   controllers: [FaceDataController],
   exports: [FaceDataService],

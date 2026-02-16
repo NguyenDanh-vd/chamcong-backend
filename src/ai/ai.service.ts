@@ -77,7 +77,9 @@ Thông tin nhân viên:
 - Tổng số lần chấm công: ${nhanVien.chamCong?.length || 0}
 - Tổng số đơn nghỉ phép: ${nhanVien.nghiPhep?.length || 0}
 - Lần chấm công gần nhất: ${
-      chamCongGanNhat ? chamCongGanNhat.ngayTao.toLocaleString('vi-VN') : 'Không có'
+      chamCongGanNhat
+        ? chamCongGanNhat.ngayTao.toLocaleString('vi-VN')
+        : 'Không có'
     }
 - Trạng thái chấm công gần nhất: ${
       chamCongGanNhat?.trangThai || 'Không có dữ liệu'
@@ -171,11 +173,11 @@ Tóm tắt dữ liệu nhân viên:
 - Tổng số lần chấm công: ${tongChamCong}
 - Tổng số đơn nghỉ phép: ${tongNghi}
 - Lần chấm công gần nhất: ${
-      chamCongGanNhat ? chamCongGanNhat.ngayTao.toLocaleString('vi-VN') : 'Không có'
+      chamCongGanNhat
+        ? chamCongGanNhat.ngayTao.toLocaleString('vi-VN')
+        : 'Không có'
     }
-- Trạng thái chấm công gần nhất: ${
-      chamCongGanNhat?.trangThai || 'Không có'
-    }
+- Trạng thái chấm công gần nhất: ${chamCongGanNhat?.trangThai || 'Không có'}
 - Nghỉ phép gần nhất: ${
       nghiPhepGanNhat
         ? `${nghiPhepGanNhat.trangThai} (từ ${nghiPhepGanNhat.ngayBatDau?.toLocaleDateString(

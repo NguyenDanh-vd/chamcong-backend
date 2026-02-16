@@ -8,8 +8,9 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -17,11 +18,17 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './auth.guard';
 import { CreateNhanVienDto } from 'src/nhanvien/dto/create-nhanvien.dto';
 import { FaceDataService } from 'src/face-data/face-data.service';
+
+type AuthenticatedRequest = ExpressRequest & {
+  user?: {
+    email?: string;
+  };
+};
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private faceDataService: FaceDataService
+    private faceDataService: FaceDataService,
   ) {}
 
   // Đăng ký với upload avatar
@@ -29,9 +36,10 @@ export class AuthController {
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: diskStorage({
-        destination: './uploads/avatars', 
+        destination: './uploads/avatars',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `avatar-${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -82,7 +90,10 @@ export class AuthController {
   // Lấy profile
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
+  getProfile(@Request() req: AuthenticatedRequest) {
+    if (!req.user?.email) {
+      throw new UnauthorizedException('Khong tim thay email tu token');
+    }
     return this.authService.getProfile(req.user.email);
   }
 
@@ -90,11 +101,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body('oldPassword') oldPassword: string,
     @Body('newPassword') newPassword: string,
   ) {
-    return this.authService.changePassword(req.user.email, oldPassword, newPassword);
+    if (!req.user?.email) {
+      throw new UnauthorizedException('Khong tim thay email tu token');
+    }
+    return this.authService.changePassword(
+      req.user.email,
+      oldPassword,
+      newPassword,
+    );
   }
 
   // Quên mật khẩu (gửi mail reset)
@@ -111,29 +129,31 @@ export class AuthController {
   ) {
     return this.authService.resetPassword(token, newPassword);
   }
-  
+
   @Post('login-face')
   async loginFace(@Body('descriptor') descriptor: number[]) {
     return this.authService.loginFace(descriptor);
   }
 
   // Thêm API Login mới vào AuthController
-@Post('login-face-mobile')
-async loginFaceMobile(@Body() body: { imageBase64: string }) {
-    if (!body.imageBase64) throw new BadRequestException("Thiếu ảnh");
-    
+  @Post('login-face-mobile')
+  async loginFaceMobile(@Body() body: { imageBase64: string }) {
+    if (!body.imageBase64) throw new BadRequestException('Thiếu ảnh');
+
     // 1. Nhờ FaceDataService tìm xem đây là ai
-    const maNV = await this.faceDataService.identifyUserFromImage(body.imageBase64); 
-    
+    const maNV = await this.faceDataService.identifyUserFromImage(
+      body.imageBase64,
+    );
+
     if (!maNV) {
-        // Nếu không tìm thấy ai khớp trong DB
-        throw new UnauthorizedException("Khuôn mặt không khớp với bất kỳ ai.");
+      // Nếu không tìm thấy ai khớp trong DB
+      throw new UnauthorizedException('Khuôn mặt không khớp với bất kỳ ai.');
     }
 
     // 2. Lấy thông tin user và tạo token
-    const user = await this.authService.validateUserByMaNV(maNV); 
-    if (!user) throw new UnauthorizedException("Lỗi tài khoản.");
+    const user = await this.authService.validateUserByMaNV(maNV);
+    if (!user) throw new UnauthorizedException('Lỗi tài khoản.');
 
     return this.authService.loginWithFace(user);
-}
+  }
 }

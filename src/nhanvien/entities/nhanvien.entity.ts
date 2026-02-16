@@ -29,9 +29,9 @@ export class NhanVien {
   @Column({ length: 20, nullable: true })
   soDienThoai?: string;
 
-  @Column({ type: 'text', nullable: true }) 
+  @Column({ type: 'text', nullable: true })
   diaChi: string;
-  
+
   @Column()
   matKhau: string;
 
@@ -49,7 +49,7 @@ export class NhanVien {
 
   @Column({ type: 'int', nullable: true })
   tuoi?: number;
-  
+
   @Column({
     type: 'enum',
     enum: VaiTro,
@@ -57,7 +57,10 @@ export class NhanVien {
   })
   vaiTro: VaiTro;
 
-  @ManyToOne(() => PhongBan, (pb) => pb.nhanViens, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => PhongBan, (pb) => pb.nhanViens, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'maPB' })
   phongBan?: PhongBan;
 

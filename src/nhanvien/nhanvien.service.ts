@@ -23,7 +23,8 @@ export class NhanvienService {
   ) {}
 
   async findAll(maPB?: number): Promise<NhanVien[]> {
-    const query = this.nvRepo.createQueryBuilder('nv')
+    const query = this.nvRepo
+      .createQueryBuilder('nv')
       .leftJoinAndSelect('nv.phongBan', 'phongBan')
       .orderBy('nv.maNV', 'ASC');
 
@@ -48,18 +49,31 @@ export class NhanvienService {
   async findOne(id: number): Promise<Omit<NhanVien, 'matKhau'>> {
     const nv = await this.findOneEntity(id);
     const { matKhau, ...safeNv } = nv;
+    void matKhau;
     return safeNv;
   }
 
-  async findAllBasic(): Promise<{ maNV: number; hoTen: string }[]> {
-    return this.nvRepo.find({
-      select: ['maNV', 'hoTen'],
+  async findAllBasic(): Promise<
+    { maNV: number; hoTen: string; avatar: string | null; avatarUrl: string | null }[]
+  > {
+    const users = await this.nvRepo.find({
+      select: ['maNV', 'hoTen', 'avatar'],
       order: { hoTen: 'ASC' },
     });
+
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    return users.map((u) => ({
+      maNV: u.maNV,
+      hoTen: u.hoTen,
+      avatar: u.avatar || null,
+      avatarUrl: u.avatar ? `${baseUrl}/uploads/avatars/${u.avatar}` : null,
+    }));
   }
 
   async create(data: CreateNhanVienDto): Promise<NhanVien> {
-    const existingNhanVien = await this.nvRepo.findOne({ where: { email: data.email } });
+    const existingNhanVien = await this.nvRepo.findOne({
+      where: { email: data.email },
+    });
     if (existingNhanVien) {
       throw new BadRequestException('Email đã tồn tại trong hệ thống.');
     }
@@ -70,7 +84,8 @@ export class NhanvienService {
     let phongBan: PhongBan | undefined = undefined;
     if (data.maPB) {
       const pb = await this.pbRepo.findOne({ where: { maPB: data.maPB } });
-      if (!pb) throw new NotFoundException(`Phòng ban id=${data.maPB} không tồn tại`);
+      if (!pb)
+        throw new NotFoundException(`Phòng ban id=${data.maPB} không tồn tại`);
       phongBan = pb;
     }
 
@@ -78,7 +93,11 @@ export class NhanvienService {
     return this.nvRepo.save(nv);
   }
 
-  async update(id: number, data: UpdateNhanvienDto, currentUser?: any): Promise<NhanVien> {
+  async update(
+    id: number,
+    data: UpdateNhanvienDto,
+    currentUser?: any,
+  ): Promise<NhanVien> {
     if (!data || typeof data !== 'object') {
       throw new BadRequestException('Dữ liệu cập nhật không hợp lệ');
     }
@@ -88,7 +107,9 @@ export class NhanvienService {
     // Kiểm tra quyền
     if (currentUser && currentUser.vaiTro !== VaiTro.QUANTRIVIEN) {
       if (currentUser.maNV !== id) {
-        throw new ForbiddenException('Bạn không có quyền sửa thông tin của người khác.');
+        throw new ForbiddenException(
+          'Bạn không có quyền sửa thông tin của người khác.',
+        );
       }
       delete data.vaiTro;
       delete data.maPB;
@@ -98,7 +119,8 @@ export class NhanvienService {
 
     if (data.maPB) {
       const pb = await this.pbRepo.findOne({ where: { maPB: data.maPB } });
-      if (!pb) throw new NotFoundException(`Phòng ban id=${data.maPB} không tồn tại`);
+      if (!pb)
+        throw new NotFoundException(`Phòng ban id=${data.maPB} không tồn tại`);
       nv.phongBan = pb;
     }
 
@@ -106,16 +128,28 @@ export class NhanvienService {
     return this.nvRepo.save(nv);
   }
 
-  async updatePassword(maNV: number, oldPassword: string | undefined, newPassword: string, requestingUser: any) {
+  async updatePassword(
+    maNV: number,
+    oldPassword: string | undefined,
+    newPassword: string,
+    requestingUser: any,
+  ) {
     const nv = await this.findOneEntity(maNV);
-    if (!newPassword) throw new BadRequestException('Mật khẩu mới không được để trống');
-    if (newPassword.length < 6) throw new BadRequestException('Mật khẩu mới ít nhất 6 ký tự');
+    if (!newPassword)
+      throw new BadRequestException('Mật khẩu mới không được để trống');
+    if (newPassword.length < 6)
+      throw new BadRequestException('Mật khẩu mới ít nhất 6 ký tự');
 
     if (requestingUser.vaiTro !== VaiTro.QUANTRIVIEN) {
-      if (requestingUser.maNV !== maNV) throw new ForbiddenException('Bạn không có quyền đổi mật khẩu cho người khác.');
-      if (!oldPassword) throw new BadRequestException('Bạn phải nhập mật khẩu cũ');
+      if (requestingUser.maNV !== maNV)
+        throw new ForbiddenException(
+          'Bạn không có quyền đổi mật khẩu cho người khác.',
+        );
+      if (!oldPassword)
+        throw new BadRequestException('Bạn phải nhập mật khẩu cũ');
       const isMatch = await bcrypt.compare(oldPassword, nv.matKhau);
-      if (!isMatch) throw new BadRequestException('Mật khẩu cũ không chính xác');
+      if (!isMatch)
+        throw new BadRequestException('Mật khẩu cũ không chính xác');
     }
 
     nv.matKhau = await bcrypt.hash(newPassword, 10);
@@ -123,7 +157,7 @@ export class NhanvienService {
 
     return { message: 'Đổi mật khẩu thành công', maNV };
   }
-  
+
   async resetPasswordByAdmin(id: number, newPassword: string) {
     // Dùng lại hàm có sẵn để tìm nhân viên, nếu không thấy sẽ tự báo lỗi
     const nv = await this.findOneEntity(id);
@@ -147,10 +181,10 @@ export class NhanvienService {
     nv.avatar = filename;
     await this.nvRepo.save(nv);
 
-    return { 
+    return {
       message: 'Cập nhật avatar thành công',
       // Trả về URL đầy đủ để frontend load ảnh
-      avatar: `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/avatars/${filename}`
+      avatar: `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/avatars/${filename}`,
     };
   }
 
@@ -161,19 +195,19 @@ export class NhanvienService {
   }
 
   async getProfile(email: string) {
-  const nv = await this.nvRepo.findOne({
-    where: { email },
-    relations: ['phongBan'],
-  });
-  if (!nv) throw new NotFoundException('Không tìm thấy nhân viên');
+    const nv = await this.nvRepo.findOne({
+      where: { email },
+      relations: ['phongBan'],
+    });
+    if (!nv) throw new NotFoundException('Không tìm thấy nhân viên');
 
-  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-  const avatarUrl = nv.avatar
-    ? `${baseUrl}/uploads/avatars/${nv.avatar}`
-    : null;
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const avatarUrl = nv.avatar
+      ? `${baseUrl}/uploads/avatars/${nv.avatar}`
+      : null;
 
-  const { matKhau, ...safeNv } = nv;
-  return { ...safeNv, avatarUrl };
-}
-
+    const { matKhau, ...safeNv } = nv;
+    void matKhau;
+    return { ...safeNv, avatarUrl };
+  }
 }

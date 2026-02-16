@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Body, Patch, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Patch,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { LuongService } from './luong.service';
 import { UpdateLuongDto } from './dto/update-luong.dto';
 
@@ -35,10 +43,10 @@ export class LuongController {
 
   // ✏️ PATCH /luong/:id/chinh-sua - Cập nhật thông tin lương
   @Patch(':id/chinh-sua')
-    async chinhSuaLuong(
+  async chinhSuaLuong(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateLuongDto: UpdateLuongDto, // ⬅️ sử dụng DTO
   ) {
-      return this.luongService.chinhSuaLuong(id, updateLuongDto);
-    }
+    return this.luongService.chinhSuaLuong(id, updateLuongDto);
+  }
 }

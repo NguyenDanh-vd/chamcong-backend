@@ -11,7 +11,9 @@ import {
   Put,
   Delete,
   ParseIntPipe,
+  BadRequestException,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { ChamcongService } from './chamcong.service';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/common/roles.guard';
@@ -19,6 +21,20 @@ import { Roles } from 'src/common/roles.decorator';
 import { CreateChamCongDto } from './dto/create-chamcong.dto';
 import { PointFaceDto } from './dto/point-face.dto';
 import { FilterChamCongDto } from './dto/filter-chamcong.dto';
+import { UpdateChamCongDto } from './dto/update-chamcong.dto';
+
+type AuthenticatedRequest = ExpressRequest & {
+  user?: {
+    maNV?: number;
+    role?: string;
+  };
+};
+
+type MyRecordsQuery = {
+  trangThai?: string;
+  tuNgay?: string;
+  denNgay?: string;
+};
 
 @Controller('chamcong')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -49,8 +65,11 @@ export class ChamcongController {
   // Lịch sử cá nhân
   @Roles('nhanvien', 'quantrivien', 'nhansu')
   @Get('me')
-  getMyChamCong(@Request() req: any) {
+  getMyChamCong(@Request() req: AuthenticatedRequest) {
     const maNV = req.user?.maNV;
+    if (!maNV) {
+      throw new BadRequestException('Khong tim thay ma nhan vien tu token');
+    }
     return this.chamcongService.getByNhanVien(maNV);
   }
 
@@ -80,7 +99,7 @@ export class ChamcongController {
       tuNgay?: string;
       denNgay?: string;
     },
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     if (req.user?.role === 'nhanvien') {
       query.maNV = req.user.maNV;
@@ -103,7 +122,10 @@ export class ChamcongController {
   // --- CRUD ADMIN ---
   @Put(':id')
   @Roles('quantrivien', 'nhansu')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateData: any) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateData: UpdateChamCongDto,
+  ) {
     return this.chamcongService.update(id, updateData);
   }
 
@@ -122,13 +144,17 @@ export class ChamcongController {
   // ENDPOINT MỚI CHO TRANG LỊCH SỬ CỦA NHÂN VIÊN
   @UseGuards(JwtAuthGuard) // Bảo vệ endpoint, yêu cầu đăng nhập
   @Get('my-records')
-  async findMyRecords(@Req() req, @Query() query) {
+  async findMyRecords(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: MyRecordsQuery,
+  ) {
     // req.user.maNV được lấy từ token sau khi xác thực
-    const maNV = req.user.maNV; 
-    
+    const maNV = req.user?.maNV;
+    if (!maNV) {
+      throw new BadRequestException('Khong tim thay ma nhan vien tu token');
+    }
+
     // Gọi phương thức mới, an toàn và rõ ràng
     return this.chamcongService.getMyRecords(maNV, query);
   }
 }
-
-

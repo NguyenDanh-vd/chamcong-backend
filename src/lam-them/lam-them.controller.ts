@@ -1,8 +1,26 @@
-import { Controller, Post, Get, Put, Param, Body, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { LamThemService } from './lam-them.service';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/common/roles.guard';
 import { Roles } from 'src/common/roles.decorator';
+import { Request as ExpressRequest } from 'express';
+import { CreateLamThemDto } from './dto/create-lam-them.dto';
+
+type AuthenticatedRequest = ExpressRequest & {
+  user: {
+    maNV: number;
+  };
+};
 
 @Controller('lamthem')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -12,14 +30,14 @@ export class LamThemController {
   // Nhân viên đăng ký LT
   @Roles('nhanvien')
   @Post()
-  create(@Req() req, @Body() body: any) {
+  create(@Req() req: AuthenticatedRequest, @Body() body: CreateLamThemDto) {
     return this.lamThemService.create(req.user.maNV, body);
   }
 
   // Nhân viên xem danh sách LT của mình
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('nhanvien')
-  getByNhanVien(@Req() req) {
+  getByNhanVien(@Req() req: AuthenticatedRequest) {
     return this.lamThemService.findByNhanVien(req.user.maNV);
   }
 
@@ -33,7 +51,10 @@ export class LamThemController {
   // HR/Quản trị viên duyệt LT
   @Roles('nhansu', 'quantrivien')
   @Put('duyet/:maLT')
-  duyet(@Param('maLT') maLT: number, @Body('trangThai') trangThai: string) {
-    return this.lamThemService.duyet(+maLT, trangThai);
+  duyet(
+    @Param('maLT', ParseIntPipe) maLT: number,
+    @Body('trangThai') trangThai: string,
+  ) {
+    return this.lamThemService.duyet(maLT, trangThai);
   }
 }

@@ -15,7 +15,10 @@ export class Luong {
   @PrimaryGeneratedColumn()
   maLuong: number;
 
-  @ManyToOne(() => NhanVien, (nv) => nv.luong, { eager: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => NhanVien, (nv) => nv.luong, {
+    eager: false,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'maNV' })
   nhanVien: NhanVien;
 

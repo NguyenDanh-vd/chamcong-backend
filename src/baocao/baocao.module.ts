@@ -8,9 +8,7 @@ import { LamThem } from 'src/lam-them/entities/lam-them.entity';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ChamCong, NghiPhep, LamThem, NhanVien]),
-  ],
+  imports: [TypeOrmModule.forFeature([ChamCong, NghiPhep, LamThem, NhanVien])],
   controllers: [BaoCaoController],
   providers: [BaoCaoService],
 })

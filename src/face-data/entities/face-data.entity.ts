@@ -1,11 +1,11 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
-  JoinColumn, 
-  CreateDateColumn, 
-  Index 
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 

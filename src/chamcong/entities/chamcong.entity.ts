@@ -48,5 +48,4 @@ export class ChamCong {
 
   @Column('decimal', { precision: 10, scale: 6, nullable: true })
   longitude?: number;
-
 }

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, OnModuleInit, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { FaceData } from './entities/face-data.entity';
@@ -8,13 +13,35 @@ import { CaLamViec } from 'src/calamviec/entities/calamviec.entity';
 
 // --- 1. IMPORT THƯ VIỆN AI (BẮT BUỘC CHO MOBILE) ---
 import * as faceapi from 'face-api.js';
-import * as tf from '@tensorflow/tfjs'; 
+import * as tf from '@tensorflow/tfjs';
 import * as path from 'path';
+import { Canvas, Image, ImageData, loadImage } from 'canvas';
 
 // Cấu hình môi trường Node.js cho face-api
-const canvas = require('canvas');
-const { Canvas, Image, ImageData, loadImage } = canvas;
-faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+faceapi.env.monkeyPatch({
+  Canvas: Canvas as unknown as {
+    new (): HTMLCanvasElement;
+    prototype: HTMLCanvasElement;
+  },
+  Image: Image as unknown as {
+    new (): HTMLImageElement;
+    prototype: HTMLImageElement;
+  },
+  ImageData: ImageData as unknown as {
+    new (
+      sw: number,
+      sh: number,
+      settings?: ImageDataSettings,
+    ): globalThis.ImageData;
+    new (
+      data: Uint8ClampedArray,
+      sw: number,
+      sh?: number,
+      settings?: ImageDataSettings,
+    ): globalThis.ImageData;
+    prototype: globalThis.ImageData;
+  },
+});
 
 @Injectable()
 export class FaceDataService implements OnModuleInit {
@@ -41,7 +68,7 @@ export class FaceDataService implements OnModuleInit {
 
   private async loadModels() {
     if (this.modelsLoaded) return;
-    const MODEL_URL = path.join(process.cwd(), 'models'); 
+    const MODEL_URL = path.join(process.cwd(), 'models');
     try {
       console.log('⏳ Đang tải Face Models...');
       await tf.ready();
@@ -58,15 +85,20 @@ export class FaceDataService implements OnModuleInit {
   }
 
   // --- 3. HÀM XỬ LÝ ẢNH (MOBILE) ---
-  private async processImageToDescriptor(imageBase64: string): Promise<Float32Array> {
+  private async processImageToDescriptor(
+    imageBase64: string,
+  ): Promise<Float32Array> {
     if (!this.modelsLoaded) await this.loadModels();
     try {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
       const imgBuffer = Buffer.from(base64Data, 'base64');
       const img = await loadImage(imgBuffer);
 
       const detection = await faceapi
-        .detectSingleFace(img as any, new faceapi.TinyFaceDetectorOptions())
+        .detectSingleFace(
+          img as unknown as HTMLImageElement,
+          new faceapi.TinyFaceDetectorOptions(),
+        )
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -75,13 +107,13 @@ export class FaceDataService implements OnModuleInit {
       }
       return detection.descriptor;
     } catch (error) {
-      console.error("AI Error:", error);
+      console.error('AI Error:', error);
       throw new BadRequestException('Lỗi xử lý hình ảnh.');
     }
   }
 
   // --- 4. API CHO MOBILE (QUAN TRỌNG) ---
-  
+
   // Đăng ký từ Mobile
   async registerFaceFromMobile(maNV: number, imageBase64: string) {
     const descriptorFloat32 = await this.processImageToDescriptor(imageBase64);
@@ -91,14 +123,20 @@ export class FaceDataService implements OnModuleInit {
 
   // Chấm công từ Mobile
   async pointFaceMobile(maNV: number, imageBase64: string, maCa: number) {
-    const storedFace = await this.fdRepo.findOne({ where: { nhanVien: { maNV } } });
-    if (!storedFace) throw new BadRequestException('Bạn chưa đăng ký khuôn mặt.');
+    const storedFace = await this.fdRepo.findOne({
+      where: { nhanVien: { maNV } },
+    });
+    if (!storedFace)
+      throw new BadRequestException('Bạn chưa đăng ký khuôn mặt.');
 
     const currentDescriptor = await this.processImageToDescriptor(imageBase64);
-    const distance = this.euclideanDistance(Array.from(currentDescriptor), storedFace.faceDescriptor);
-    
+    const distance = this.euclideanDistance(
+      Array.from(currentDescriptor),
+      storedFace.faceDescriptor,
+    );
+
     // Nới lỏng ngưỡng so sánh lên 0.65 để dễ chấm công hơn trên điện thoại
-    if (distance > 0.65) { 
+    if (distance > 0.65) {
       throw new BadRequestException('Khuôn mặt không khớp. Vui lòng thử lại.');
     }
 
@@ -114,8 +152,22 @@ export class FaceDataService implements OnModuleInit {
 
   private getTodayRangeUTC() {
     const vnNow = this.getVietnamTime();
-    const startVN = new Date(vnNow.getFullYear(), vnNow.getMonth(), vnNow.getDate(), 0, 0, 0);
-    const endVN = new Date(vnNow.getFullYear(), vnNow.getMonth(), vnNow.getDate(), 23, 59, 59);
+    const startVN = new Date(
+      vnNow.getFullYear(),
+      vnNow.getMonth(),
+      vnNow.getDate(),
+      0,
+      0,
+      0,
+    );
+    const endVN = new Date(
+      vnNow.getFullYear(),
+      vnNow.getMonth(),
+      vnNow.getDate(),
+      23,
+      59,
+      59,
+    );
     const vnOffsetMs = 7 * 60 * 60 * 1000;
     return {
       startUTC: new Date(startVN.getTime() - vnOffsetMs),
@@ -124,7 +176,7 @@ export class FaceDataService implements OnModuleInit {
   }
 
   private euclideanDistance(desc1: number[], desc2: number[]): number {
-    if (desc1.length !== desc2.length) return 1.0; 
+    if (desc1.length !== desc2.length) return 1.0;
     let sum = 0;
     for (let i = 0; i < desc1.length; i++) {
       sum += Math.pow(desc1[i] - desc2[i], 2);
@@ -149,7 +201,7 @@ export class FaceDataService implements OnModuleInit {
 
     if (!record) {
       record = this.chamCongRepo.create({
-        nhanVien: nv as NhanVien, // Ép kiểu để tránh lỗi đỏ
+        nhanVien: nv, // Ép kiểu để tránh lỗi đỏ
         caLamViec: ca,
         gioVao: this.getVietnamTime(),
         trangThai: 'chua-xac-nhan',
@@ -161,8 +213,11 @@ export class FaceDataService implements OnModuleInit {
 
     if (!record.gioRa) {
       const now = this.getVietnamTime();
-      if (now.getTime() - record.gioVao.getTime() < 300000) { 
-         return { message: 'Đã Check-in rồi. Vui lòng quay lại sau.', type: 'ignored' }; 
+      if (now.getTime() - record.gioVao.getTime() < 300000) {
+        return {
+          message: 'Đã Check-in rồi. Vui lòng quay lại sau.',
+          type: 'ignored',
+        };
       }
       record.gioRa = now;
       const diffMs = record.gioRa.getTime() - record.gioVao.getTime();
@@ -196,44 +251,70 @@ export class FaceDataService implements OnModuleInit {
     return this.pointFaceLogic(maNV, maCa);
   }
 
-  private async detectEmployee(faceDescriptor: number[]): Promise<number | null> {
+  private async detectEmployee(
+    faceDescriptor: number[],
+  ): Promise<number | null> {
     const allFaceData = await this.fdRepo.find({ relations: ['nhanVien'] });
     const threshold = 0.65; // Nới lỏng ngưỡng
 
     for (const fd of allFaceData) {
       try {
-        const distance = this.euclideanDistance(faceDescriptor, fd.faceDescriptor);
+        const distance = this.euclideanDistance(
+          faceDescriptor,
+          fd.faceDescriptor,
+        );
         if (distance < threshold) return fd.nhanVien.maNV;
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     }
     return null;
   }
 
   // Helper CRUD
-  async checkFace(maNV: number) { const fd = await this.fdRepo.findOne({ where: { nhanVien: { maNV } } }); return { hasFace: !!fd }; }
-  async getAll() { return this.fdRepo.find({ relations: ['nhanVien'] }); }
-  async getByNhanVien(maNV: number) { return this.fdRepo.find({ where: { nhanVien: { maNV } }, relations: ['nhanVien'] }); }
-  async removeByNhanVien(maNV: number) { await this.fdRepo.delete({ nhanVien: { maNV } }); return { message: `Đã xóa FaceID` }; }
-  async remove(id: number) { await this.fdRepo.delete(id); return { message: `Đã xóa` }; }
+  async checkFace(maNV: number) {
+    const fd = await this.fdRepo.findOne({ where: { nhanVien: { maNV } } });
+    return { hasFace: !!fd };
+  }
+  async getAll() {
+    return this.fdRepo.find({ relations: ['nhanVien'] });
+  }
+  async getByNhanVien(maNV: number) {
+    return this.fdRepo.find({
+      where: { nhanVien: { maNV } },
+      relations: ['nhanVien'],
+    });
+  }
+  async removeByNhanVien(maNV: number) {
+    await this.fdRepo.delete({ nhanVien: { maNV } });
+    return { message: `Đã xóa FaceID` };
+  }
+  async remove(id: number) {
+    await this.fdRepo.delete(id);
+    return { message: `Đã xóa` };
+  }
 
   /** 1. Tìm xem ảnh này là của nhân viên nào (Dùng cho Login - So sánh 1:N) */
   async identifyUserFromImage(imageBase64: string): Promise<number | null> {
     // 1. Chuyển ảnh Base64 thành vector (Descriptor)
     const descriptor = await this.processImageToDescriptor(imageBase64);
-    
+
     const allFaces = await this.fdRepo.find({ relations: ['nhanVien'] });
-    
+
     let bestMatch: { maNV: number; distance: number } | null = null;
-    const threshold = 0.6; 
+    const threshold = 0.6;
 
     for (const face of allFaces) {
-        const dist = this.euclideanDistance(Array.from(descriptor), face.faceDescriptor);
-        
-        if (dist < threshold) {
-            if (!bestMatch || dist < bestMatch.distance) {
-                bestMatch = { maNV: face.nhanVien.maNV, distance: dist };
-            }
+      const dist = this.euclideanDistance(
+        Array.from(descriptor),
+        face.faceDescriptor,
+      );
+
+      if (dist < threshold) {
+        if (!bestMatch || dist < bestMatch.distance) {
+          bestMatch = { maNV: face.nhanVien.maNV, distance: dist };
         }
+      }
     }
 
     return bestMatch ? bestMatch.maNV : null;

@@ -6,7 +6,7 @@ import { NhanvienController } from './nhanvien.controller';
 import { PhongBan } from 'src/phongban/entities/phongban.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([NhanVien,PhongBan])],
+  imports: [TypeOrmModule.forFeature([NhanVien, PhongBan])],
   providers: [NhanvienService],
   controllers: [NhanvienController],
   exports: [NhanvienService],

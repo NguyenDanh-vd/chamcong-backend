@@ -78,13 +78,13 @@ export class CalamviecService {
       relations: ['nhanVien', 'caLamViec'],
     });
 
-    const checkinsMap = new Map(todayCheckins.map(c => [c.nhanVien.maNV, c]));
+    const checkinsMap = new Map(todayCheckins.map((c) => [c.nhanVien.maNV, c]));
 
     const allEmployees = await this.nhanVienRepo.find({
       select: ['maNV', 'hoTen'],
     });
 
-    return allEmployees.map(employee => {
+    return allEmployees.map((employee) => {
       const checkin = checkinsMap.get(employee.maNV);
 
       return checkin

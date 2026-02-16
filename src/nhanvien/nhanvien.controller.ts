@@ -26,8 +26,16 @@ import { UpdateNhanvienDto } from './dto/update-nhanvien.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { Express } from 'express';
+import { Express, Request as ExpressRequest } from 'express';
 import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
+
+type AuthenticatedRequest = ExpressRequest & {
+  user: {
+    maNV: number;
+    vaiTro: VaiTro;
+    role?: VaiTro;
+  };
+};
 
 @Controller('nhanvien')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -48,34 +56,37 @@ export class NhanvienController {
 
   @Roles(VaiTro.QUANTRIVIEN, VaiTro.NHANSU, VaiTro.NHANVIEN)
   @Get('profile')
-  async findProfile(@Request() req: any) {
-    const userFromDb = await this.nhanvienService.findOne(req.user.maNV); 
+  async findProfile(@Request() req: AuthenticatedRequest) {
+    const userFromDb = await this.nhanvienService.findOne(req.user.maNV);
 
     if (!userFromDb) {
-    throw new NotFoundException('Không tìm thấy thông tin người dùng');
+      throw new NotFoundException('Không tìm thấy thông tin người dùng');
+    }
+    return {
+      id: userFromDb.maNV, // <-- ÁNH XẠ maNV SANG id TẠI ĐÂY
+      hoTen: userFromDb.hoTen,
+      email: userFromDb.email,
+      soDienThoai: userFromDb.soDienThoai,
+      gioiTinh: userFromDb.gioiTinh,
+      tuoi: userFromDb.tuoi,
+      diaChi: userFromDb.diaChi,
+      cccd: userFromDb.cccd,
+      ngayBatDau: userFromDb.ngayBatDau,
+      role: userFromDb.vaiTro,
+      phongBan: userFromDb.phongBan,
+      // Service chỉ trả về tên file, controller sẽ tạo URL đầy đủ
+      avatarUrl: userFromDb.avatar
+        ? `${process.env.BASE_URL}/uploads/avatars/${userFromDb.avatar}`
+        : null,
+    };
   }
-  return {
-    id: userFromDb.maNV, // <-- ÁNH XẠ maNV SANG id TẠI ĐÂY
-    hoTen: userFromDb.hoTen,
-    email: userFromDb.email,
-    soDienThoai: userFromDb.soDienThoai,
-    gioiTinh: userFromDb.gioiTinh, 
-    tuoi: userFromDb.tuoi,
-    diaChi: userFromDb.diaChi,
-    cccd: userFromDb.cccd,
-    ngayBatDau: userFromDb.ngayBatDau, 
-    role: userFromDb.vaiTro,
-    phongBan: userFromDb.phongBan, 
-    // Service chỉ trả về tên file, controller sẽ tạo URL đầy đủ
-    avatarUrl: userFromDb.avatar 
-      ? `${process.env.BASE_URL}/uploads/avatars/${userFromDb.avatar}`
-      : null,
-  };
-}
 
   @Roles(VaiTro.QUANTRIVIEN, VaiTro.NHANSU, VaiTro.NHANVIEN)
   @Patch('profile')
-  updateProfile(@Request() req: any, @Body() body: UpdateNhanvienDto) {
+  updateProfile(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: UpdateNhanvienDto,
+  ) {
     return this.nhanvienService.update(req.user.maNV, body, req.user);
   }
 
@@ -85,7 +96,7 @@ export class NhanvienController {
     return this.nhanvienService.findOne(id);
   }
 
-  @Roles(VaiTro.QUANTRIVIEN,VaiTro.NHANSU)
+  @Roles(VaiTro.QUANTRIVIEN, VaiTro.NHANSU)
   @Post()
   create(@Body() body: CreateNhanVienDto) {
     return this.nhanvienService.create(body);
@@ -105,7 +116,7 @@ export class NhanvienController {
   updatePassword(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { oldPassword?: string; newPassword: string },
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     if (req.user.vaiTro !== VaiTro.QUANTRIVIEN && req.user.maNV !== id) {
       throw new ForbiddenException('Không được đổi mật khẩu của người khác');
@@ -139,10 +150,7 @@ export class NhanvienController {
         filename: (req, file, cb) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(
-            null,
-            `avatar-${uniqueSuffix}${extname(file.originalname)}`,
-          );
+          cb(null, `avatar-${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
       limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
@@ -160,9 +168,8 @@ export class NhanvienController {
   async uploadAvatar(
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
-
     console.log('DEBUG: User performing action:', req.user);
 
     if (req.user.role !== VaiTro.QUANTRIVIEN && req.user.maNV !== id) {
@@ -170,7 +177,7 @@ export class NhanvienController {
     }
     if (!file) throw new BadRequestException('Chưa upload file hợp lệ');
 
-    console.log('Upload avatar:', file); 
+    console.log('Upload avatar:', file);
     // chỉ lưu tên file vào DB
     return this.nhanvienService.updateAvatar(id, file.filename);
   }
@@ -180,5 +187,4 @@ export class NhanvienController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.nhanvienService.remove(id);
   }
-
 }

@@ -21,7 +21,7 @@ import { LuongModule } from './luong/luong.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.key', '.env'], 
+      envFilePath: ['.env.key', '.env'],
     }),
 
     MailerModule.forRoot(MAIL_CONFIG),
@@ -31,14 +31,16 @@ import { LuongModule } from './luong/luong.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const dbUrl = config.get<string>('DATABASE_URL');
-          if (!dbUrl) {
-            throw new Error('DATABASE_URL is missing. Add it to your .env (local) or env vars (Render).');
-          }
+        if (!dbUrl) {
+          throw new Error(
+            'DATABASE_URL is missing. Add it to your .env (local) or env vars (Render).',
+          );
+        }
 
         const u = new URL(dbUrl);
         const useSSL =
-        u.hostname.endsWith('neon.tech') ||
-        u.searchParams.get('sslmode') === 'require';
+          u.hostname.endsWith('neon.tech') ||
+          u.searchParams.get('sslmode') === 'require';
 
         return {
           type: 'postgres',
@@ -50,7 +52,7 @@ import { LuongModule } from './luong/luong.module';
         };
       },
     }),
-    
+
     AuthModule,
     NhanvienModule,
     PhongbanModule,

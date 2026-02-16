@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config'; 
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -11,7 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       // 2. FIX: Lấy SECRET KEY TỪ BIẾN MÔI TRƯỜNG
-      secretOrKey: _configService.get<string>('JWT_SECRET_KEY'), 
+      secretOrKey: _configService.get<string>('JWT_SECRET_KEY'),
     });
   }
 
@@ -19,15 +19,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     // Kiểm tra tính hợp lệ tối thiểu của token
     if (!payload.maNV) {
-        throw new UnauthorizedException('Token không hợp lệ hoặc thiếu thông tin.');
+      throw new UnauthorizedException(
+        'Token không hợp lệ hoặc thiếu thông tin.',
+      );
     }
-    
+
     // Trả về đối tượng user để NestJS gắn vào req.user
-    return { 
-        maNV: payload.maNV, 
-        email: payload.email, 
-        role: payload.role, 
-        hoTen: payload.hoTen 
+    return {
+      maNV: payload.maNV,
+      email: payload.email,
+      role: payload.role,
+      hoTen: payload.hoTen,
     };
   }
 }

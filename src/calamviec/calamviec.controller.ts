@@ -1,8 +1,20 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { CalamviecService } from './calamviec.service';
 import { Roles } from '../common/roles.decorator';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../common/roles.guard';
+import { CreateCaLamViecDto } from './dto/create-calamviec.dto';
+import { UpdateCaLamViecDto } from './dto/update-calamviec.dto';
 
 @Controller('calamviec')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,7 +28,7 @@ export class CalamviecController {
   }
 
   @Get('current-shift')
-  @Roles('quantrivien', 'nhansu','nhanvien')
+  @Roles('quantrivien', 'nhansu', 'nhanvien')
   async getCurrentShift() {
     console.log('👉 API /current-shift được gọi');
     return this.calamviecService.getCurrentShift();
@@ -37,14 +49,17 @@ export class CalamviecController {
   }
 
   @Post()
-  @Roles('quantrivien','nhansu')
-  create(@Body() body: any) {
+  @Roles('quantrivien', 'nhansu')
+  create(@Body() body: CreateCaLamViecDto) {
     return this.calamviecService.create(body);
   }
 
   @Put(':id')
   @Roles('quantrivien')
-  update(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateCaLamViecDto,
+  ) {
     return this.calamviecService.update(id, body);
   }
 
@@ -52,7 +67,7 @@ export class CalamviecController {
   @Roles('quantrivien')
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body('trangThai') trangThai: boolean, 
+    @Body('trangThai') trangThai: boolean,
   ) {
     return this.calamviecService.updateStatus(id, trangThai);
   }

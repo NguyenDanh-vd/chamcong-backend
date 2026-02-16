@@ -46,7 +46,9 @@ export class AiController {
       };
     }
 
-    throw new BadRequestException('Thiếu thông tin nhân viên hoặc quyền truy cập không hợp lệ');
+    throw new BadRequestException(
+      'Thiếu thông tin nhân viên hoặc quyền truy cập không hợp lệ',
+    );
   }
 
   /**

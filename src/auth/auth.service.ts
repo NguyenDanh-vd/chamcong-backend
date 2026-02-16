@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
-import { FaceData } from 'src/face-data/entities/face-data.entity'; 
+import { FaceData } from 'src/face-data/entities/face-data.entity';
 import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -37,7 +37,7 @@ export class AuthService {
   // ✅ Đăng nhập bằng Face ID (MỚI)
   async loginFace(descriptor: number[]) {
     const allFaces = await this.faceDataRepo.find({
-      relations: ['nhanVien'], 
+      relations: ['nhanVien'],
     });
 
     const threshold = 0.5;
@@ -58,7 +58,7 @@ export class AuthService {
 
       if (distance < threshold) {
         foundUser = faceRecord.nhanVien;
-        break; 
+        break;
       }
     }
 
@@ -163,7 +163,8 @@ export class AuthService {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Không tìm thấy người dùng');
 
-    const BASE = process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com';
+    const BASE =
+      process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com';
     return {
       maNV: nv.maNV,
       email: nv.email,
@@ -178,7 +179,11 @@ export class AuthService {
   }
 
   // Đổi mật khẩu
-  async changePassword(email: string, oldPassword: string, newPassword: string) {
+  async changePassword(
+    email: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Không tìm thấy người dùng');
 
@@ -190,7 +195,7 @@ export class AuthService {
 
     return { message: 'Đổi mật khẩu thành công' };
   }
-  
+
   // Quên mật khẩu
   async forgotPassword(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
@@ -199,7 +204,7 @@ export class AuthService {
     const token = await this.jwtService.signAsync(
       { email },
       {
-        secret: process.env.JWT_SECRET || 'secret', 
+        secret: process.env.JWT_SECRET || 'secret',
         expiresIn: '15m',
       },
     );
@@ -209,13 +214,13 @@ export class AuthService {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.MAIL_USER, 
-        pass: process.env.MAIL_PASS, 
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
     await transporter.sendMail({
-      from: `"ITGlobal Support" <${process.env.MAIL_USER}>`, 
+      from: `"ITGlobal Support" <${process.env.MAIL_USER}>`,
       to: email,
       subject: 'Đặt lại mật khẩu - ITGlobal',
       html: resetPasswordTemplate(resetLink, nv.hoTen),
@@ -245,7 +250,7 @@ export class AuthService {
 
   /** 1. Tìm user chỉ bằng mã NV (Dùng cho FaceID) */
   async validateUserByMaNV(maNV: number): Promise<any> {
-    const user = await this.nhanVienService.findOne(maNV); 
+    const user = await this.nhanVienService.findOne(maNV);
     if (user) {
       return user;
     }
@@ -255,12 +260,12 @@ export class AuthService {
   /** 2. Tạo Token riêng cho FaceID (Fix lỗi TS2551) */
   async loginWithFace(user: any) {
     // Sử dụng user object đã được validate
-    const payload = { 
-        email: user.email, 
-        sub: user.maNV, 
-        role: user.vaiTro, 
-        maNV: user.maNV, 
-        hoTen: user.hoTen 
+    const payload = {
+      email: user.email,
+      sub: user.maNV,
+      role: user.vaiTro,
+      maNV: user.maNV,
+      hoTen: user.hoTen,
     };
     return {
       access_token: this.jwtService.sign(payload),

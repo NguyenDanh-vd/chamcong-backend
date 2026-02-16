@@ -9,7 +9,6 @@ import {
   IsInt,
   Min,
   Max,
-
 } from 'class-validator';
 import { VaiTro } from '../enums/vai-tro.enum';
 
@@ -28,9 +27,9 @@ export class CreateNhanVienDto {
   soDienThoai?: string;
 
   @IsString({ message: 'Địa chỉ phải là một chuỗi' })
-  @IsOptional() 
+  @IsOptional()
   diaChi?: string;
-  
+
   // 👇 Thêm CCCD
   @IsOptional()
   @IsString()
@@ -49,7 +48,6 @@ export class CreateNhanVienDto {
   @Min(18)
   @Max(65)
   tuoi?: number;
-
 
   @IsOptional()
   @IsEnum(VaiTro, { message: 'Vai trò không hợp lệ' })

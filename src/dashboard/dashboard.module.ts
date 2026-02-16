@@ -7,9 +7,7 @@ import { ChamCong } from '../chamcong/entities/chamcong.entity';
 import { NghiPhep } from '../nghi-phep/entities/nghi-phep.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([NhanVien, ChamCong, NghiPhep]),
-  ],
+  imports: [TypeOrmModule.forFeature([NhanVien, ChamCong, NghiPhep])],
   controllers: [DashboardController],
   providers: [DashboardService],
 })

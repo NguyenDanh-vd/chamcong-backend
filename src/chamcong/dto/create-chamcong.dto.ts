@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, IsInt, IsNumber } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsInt,
+  IsNumber,
+} from 'class-validator';
 
 export class CreateChamCongDto {
   @IsInt()
@@ -19,12 +25,12 @@ export class CreateChamCongDto {
 
   @IsString()
   @IsNotEmpty()
-  trangThai: string; 
+  trangThai: string;
   // hop-le | tre | vang-mat | chua-xac-nhan
 
   @IsString()
   @IsOptional()
-  hinhThuc?: string; 
+  hinhThuc?: string;
   // faceid | gps | manual | faceid+gps
 
   @IsOptional()

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LamThem } from './entities/lam-them.entity';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
+import { CreateLamThemDto } from './dto/create-lam-them.dto';
 
 @Injectable()
 export class LamThemService {
@@ -14,7 +15,7 @@ export class LamThemService {
   ) {}
 
   // Nhân viên đăng ký làm thêm
-  async create(maNV: number, data: Partial<LamThem>): Promise<LamThem> {
+  async create(maNV: number, data: CreateLamThemDto): Promise<LamThem> {
     const nv = await this.nvRepo.findOne({ where: { maNV } });
     if (!nv) throw new NotFoundException('Không tìm thấy nhân viên');
 
@@ -34,7 +35,7 @@ export class LamThemService {
       order: { ngayLT: 'DESC' },
     });
 
-    return lamThemList.map(item => ({
+    return lamThemList.map((item) => ({
       maLT: item.maLT,
       ngay: item.ngayLT,
       gioBatDau: item.gioBatDau,
@@ -65,7 +66,7 @@ export class LamThemService {
       order: { ngayLT: 'DESC' },
     });
 
-    return list.map(item => ({
+    return list.map((item) => ({
       maLT: item.maLT,
       ngay: item.ngayLT,
       gioBatDau: item.gioBatDau,

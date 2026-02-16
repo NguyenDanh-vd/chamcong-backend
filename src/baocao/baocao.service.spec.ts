@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BaoCaoService } from './baocao.service';
 
 describe('BaocaoService', () => {
-  let service:BaoCaoService;
+  let service: BaoCaoService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

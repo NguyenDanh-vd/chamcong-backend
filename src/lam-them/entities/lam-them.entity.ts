@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 
 @Entity('lamThem')
@@ -20,17 +27,16 @@ export class LamThem {
   gioKetThuc: string;
 
   @Column({
-  type: 'numeric',
-  precision: 5,
-  scale: 2,
-  default: 0,
-  transformer: {
-    to: (value: number) => value,
-    from: (value: string) => parseFloat(value),
-  },
-})
-soGio: number;
-
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
+  soGio: number;
 
   @Column({ nullable: true })
   ghiChu: string;
