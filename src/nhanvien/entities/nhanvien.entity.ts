@@ -15,6 +15,7 @@ import { FaceData } from 'src/face-data/entities/face-data.entity';
 import { Luong } from 'src/luong/entities/luong.entity';
 
 import { VaiTro } from '../enums/vai-tro.enum';
+import { TrangThaiTaiKhoan } from '../enums/trang-thai-tai-khoan.enum';
 @Entity({ name: 'nhanvien', schema: 'public' })
 export class NhanVien {
   @PrimaryGeneratedColumn({ name: 'maNV' })
@@ -56,6 +57,13 @@ export class NhanVien {
     default: VaiTro.NHANVIEN,
   })
   vaiTro: VaiTro;
+
+  @Column({
+    type: 'enum',
+    enum: TrangThaiTaiKhoan,
+    default: TrangThaiTaiKhoan.PENDING,
+  })
+  trangThaiTaiKhoan: TrangThaiTaiKhoan;
 
   @ManyToOne(() => PhongBan, (pb) => pb.nhanViens, {
     nullable: true,

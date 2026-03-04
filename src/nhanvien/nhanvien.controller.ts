@@ -54,6 +54,24 @@ export class NhanvienController {
     return this.nhanvienService.findAll(maPB ? +maPB : undefined);
   }
 
+  @Roles(VaiTro.QUANTRIVIEN)
+  @Get('pending-approvals')
+  findPendingApprovals() {
+    return this.nhanvienService.findPendingApprovals();
+  }
+
+  @Roles(VaiTro.QUANTRIVIEN)
+  @Patch(':id/approve-registration')
+  approveRegistration(@Param('id', ParseIntPipe) id: number) {
+    return this.nhanvienService.approveRegistration(id);
+  }
+
+  @Roles(VaiTro.QUANTRIVIEN)
+  @Patch(':id/reject-registration')
+  rejectRegistration(@Param('id', ParseIntPipe) id: number) {
+    return this.nhanvienService.rejectRegistration(id);
+  }
+
   @Roles(VaiTro.QUANTRIVIEN, VaiTro.NHANSU, VaiTro.NHANVIEN)
   @Get('profile')
   async findProfile(@Request() req: AuthenticatedRequest) {

@@ -12,6 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import { CreateNhanVienDto } from './dto/create-nhanvien.dto';
 import { UpdateNhanvienDto } from './dto/update-nhanvien.dto';
 import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
+import { TrangThaiTaiKhoan } from 'src/nhanvien/enums/trang-thai-tai-khoan.enum';
 
 @Injectable()
 export class NhanvienService {
@@ -90,6 +91,29 @@ export class NhanvienService {
     }
 
     const nv = this.nvRepo.create({ ...data, phongBan });
+    if (!nv.trangThaiTaiKhoan) {
+      nv.trangThaiTaiKhoan = TrangThaiTaiKhoan.APPROVED;
+    }
+    return this.nvRepo.save(nv);
+  }
+
+  async findPendingApprovals(): Promise<NhanVien[]> {
+    return this.nvRepo.find({
+      where: { trangThaiTaiKhoan: TrangThaiTaiKhoan.PENDING },
+      relations: ['phongBan'],
+      order: { ngayTao: 'ASC' },
+    });
+  }
+
+  async approveRegistration(id: number): Promise<NhanVien> {
+    const nv = await this.findOneEntity(id);
+    nv.trangThaiTaiKhoan = TrangThaiTaiKhoan.APPROVED;
+    return this.nvRepo.save(nv);
+  }
+
+  async rejectRegistration(id: number): Promise<NhanVien> {
+    const nv = await this.findOneEntity(id);
+    nv.trangThaiTaiKhoan = TrangThaiTaiKhoan.REJECTED;
     return this.nvRepo.save(nv);
   }
 

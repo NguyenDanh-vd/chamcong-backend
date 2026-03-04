@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
@@ -6,26 +6,26 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import * as nodemailer from 'nodemailer';
+
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 import { FaceData } from 'src/face-data/entities/face-data.entity';
 import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
-import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
-import { resetPasswordTemplate } from 'src/email-templates/reset-password';
-import * as nodemailer from 'nodemailer';
+import { TrangThaiTaiKhoan } from 'src/nhanvien/enums/trang-thai-tai-khoan.enum';
 import { NhanvienService } from 'src/nhanvien/nhanvien.service';
+import { resetPasswordTemplate } from 'src/email-templates/reset-password';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(NhanVien) private nvRepo: Repository<NhanVien>,
-    // Inject thêm FaceData Repo để lấy dữ liệu khuôn mặt so sánh
     @InjectRepository(FaceData) private faceDataRepo: Repository<FaceData>,
     private jwtService: JwtService,
     private nhanVienService: NhanvienService,
   ) {}
 
-  // --- Hàm hỗ trợ tính khoảng cách giữa 2 vector khuôn mặt (Euclidean Distance) ---
   private getEuclideanDistance(face1: number[], face2: number[]): number {
     return Math.sqrt(
       face1
@@ -34,7 +34,27 @@ export class AuthService {
     );
   }
 
-  // ✅ Đăng nhập bằng Face ID (MỚI)
+  // Chỉ nhân viên mới bị kiểm tra trạng thái duyệt.
+  private ensureApprovedAccount(
+    user: Pick<NhanVien, 'trangThaiTaiKhoan' | 'vaiTro'>,
+  ) {
+    if (user.vaiTro !== VaiTro.NHANVIEN) {
+      return;
+    }
+
+    if (user.trangThaiTaiKhoan === TrangThaiTaiKhoan.REJECTED) {
+      throw new UnauthorizedException(
+        'Tài khoản đã bị từ chối. Vui lòng liên hệ quản trị viên.',
+      );
+    }
+
+    if (user.trangThaiTaiKhoan !== TrangThaiTaiKhoan.APPROVED) {
+      throw new UnauthorizedException(
+        'Tài khoản đang chờ quản trị viên phê duyệt.',
+      );
+    }
+  }
+
   async loginFace(descriptor: number[]) {
     const allFaces = await this.faceDataRepo.find({
       relations: ['nhanVien'],
@@ -44,15 +64,11 @@ export class AuthService {
     let foundUser: NhanVien | null = null;
 
     for (const faceRecord of allFaces) {
-      let storedDescriptor: number[];
-      // Ép kiểu as any để tránh lỗi TypeScript nếu DB lưu JSON string
       const rawDescriptor = faceRecord.faceDescriptor as any;
-
-      if (typeof rawDescriptor === 'string') {
-        storedDescriptor = JSON.parse(rawDescriptor);
-      } else {
-        storedDescriptor = rawDescriptor;
-      }
+      const storedDescriptor: number[] =
+        typeof rawDescriptor === 'string'
+          ? JSON.parse(rawDescriptor)
+          : rawDescriptor;
 
       const distance = this.getEuclideanDistance(descriptor, storedDescriptor);
 
@@ -65,6 +81,8 @@ export class AuthService {
     if (!foundUser) {
       throw new UnauthorizedException('Khuôn mặt không khớp với nhân viên nào');
     }
+
+    this.ensureApprovedAccount(foundUser);
 
     const payload = {
       maNV: foundUser.maNV,
@@ -85,7 +103,6 @@ export class AuthService {
     };
   }
 
-  // Đăng ký
   async register(
     hoTen: string,
     email: string,
@@ -94,16 +111,11 @@ export class AuthService {
     gioiTinh?: string,
     tuoi?: number,
     diaChi?: string,
-    vaiTro: VaiTro = VaiTro.NHANVIEN,
     cccd?: string,
     ngayBatDau?: Date,
     avatarFileName?: string,
     maPB?: any,
   ) {
-    if (!Object.values(VaiTro).includes(vaiTro)) {
-      throw new BadRequestException('Vai trò không hợp lệ');
-    }
-
     const exist = await this.nvRepo.findOne({ where: { email } });
     if (exist) throw new BadRequestException('Email đã tồn tại');
 
@@ -113,7 +125,7 @@ export class AuthService {
       hoTen,
       email,
       matKhau: hashed,
-      vaiTro,
+      vaiTro: VaiTro.NHANVIEN,
       soDienThoai,
       gioiTinh: gioiTinh as 'Nam' | 'Nữ' | 'Khác',
       tuoi,
@@ -121,19 +133,21 @@ export class AuthService {
       cccd,
       ngayBatDau,
       avatar: avatarFileName,
-      phongBan: maPB ? { maPB: maPB } : undefined,
+      phongBan: maPB ? { maPB } : undefined,
+      trangThaiTaiKhoan: TrangThaiTaiKhoan.PENDING,
     });
 
     return this.nvRepo.save(nv);
   }
 
-  // ✅ Đăng nhập thường
   async login(email: string, matKhau: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Sai email hoặc mật khẩu');
 
     const isMatch = await bcrypt.compare(matKhau, nv.matKhau);
     if (!isMatch) throw new UnauthorizedException('Sai email hoặc mật khẩu');
+
+    this.ensureApprovedAccount(nv);
 
     const payload = {
       maNV: nv.maNV,
@@ -152,13 +166,13 @@ export class AuthService {
       ngayBatDau: nv.ngayBatDau,
       gioiTinh: nv.gioiTinh || null,
       tuoi: nv.tuoi || null,
+      trangThaiTaiKhoan: nv.trangThaiTaiKhoan,
       avatarUrl: nv.avatar
         ? `${process.env.BASE_URL || 'https://chamcong-backend-8pgb.onrender.com'}/uploads/avatars/${nv.avatar}`
         : null,
     };
   }
 
-  // Lấy thông tin profile
   async getProfile(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new UnauthorizedException('Không tìm thấy người dùng');
@@ -174,11 +188,11 @@ export class AuthService {
       tuoi: nv.tuoi || null,
       cccd: nv.cccd,
       ngayBatDau: nv.ngayBatDau,
+      trangThaiTaiKhoan: nv.trangThaiTaiKhoan,
       avatarUrl: nv.avatar ? `${BASE}/uploads/avatars/${nv.avatar}` : null,
     };
   }
 
-  // Đổi mật khẩu
   async changePassword(
     email: string,
     oldPassword: string,
@@ -196,7 +210,6 @@ export class AuthService {
     return { message: 'Đổi mật khẩu thành công' };
   }
 
-  // Quên mật khẩu
   async forgotPassword(email: string) {
     const nv = await this.nvRepo.findOne({ where: { email } });
     if (!nv) throw new NotFoundException('Email không tồn tại');
@@ -229,7 +242,6 @@ export class AuthService {
     return { message: 'Link đặt lại mật khẩu đã được gửi vào email của bạn' };
   }
 
-  // Đặt lại mật khẩu
   async resetPassword(token: string, newPassword: string) {
     try {
       const payload: any = await this.jwtService.verifyAsync(token, {
@@ -248,18 +260,22 @@ export class AuthService {
     }
   }
 
-  /** 1. Tìm user chỉ bằng mã NV (Dùng cho FaceID) */
   async validateUserByMaNV(maNV: number): Promise<any> {
     const user = await this.nhanVienService.findOne(maNV);
-    if (user) {
-      return user;
-    }
+    if (user) return user;
     return null;
   }
 
-  /** 2. Tạo Token riêng cho FaceID (Fix lỗi TS2551) */
   async loginWithFace(user: any) {
-    // Sử dụng user object đã được validate
+    if (
+      user.vaiTro === VaiTro.NHANVIEN &&
+      user.trangThaiTaiKhoan !== TrangThaiTaiKhoan.APPROVED
+    ) {
+      throw new UnauthorizedException(
+        'Tài khoản chưa được quản trị viên phê duyệt.',
+      );
+    }
+
     const payload = {
       email: user.email,
       sub: user.maNV,
