@@ -1,4 +1,16 @@
+<<<<<<< HEAD
 ﻿# ITGlobal - Chấm Công & Quản Trị Nhân Sự (Backend)
+=======
+﻿<div align="center">
+  <a href="https://nestjs.com/" target="_blank">
+    <img src="<img width="1400" height="1050" alt="image" src="https://github.com/user-attachments/assets/72e213d2-4921-43d4-b79a-c8e1ea513f1e" />
+" alt="NestJS Logo" width="180" />
+  </a>
+  
+  <h1>🏢 ITGlobal - Chấm Công & Quản Trị Nhân Sự (Backend)</h1>
+  
+  <p><i>Backend API mạnh mẽ cho hệ thống chấm công (hỗ trợ Face ID), quản lý nhân sự và báo cáo doanh nghiệp.</i></p>
+>>>>>>> eb9fef72bc1e4876844bf2c049d97a645481b01a
 
 Backend API cho hệ thống chấm công, quản lý nhân sự, nghỉ phép, tăng ca và tính lương doanh nghiệp.
 
@@ -46,6 +58,7 @@ Backend API cho hệ thống chấm công, quản lý nhân sự, nghỉ phép, 
 ### Cài dependencies
 ```bash
 npm install
+<<<<<<< HEAD
 ```
 
 ## Biến môi trường (.env)
@@ -92,3 +105,5 @@ npm run lint        # Chạy Linter kiểm tra lỗi format code
 ## 👥 9. Tác giả & Thông tin dự án
 - Team thực hiện: Nhóm_05
 - Môn học / Chủ đề: Hệ thống chấm công và quản trị nhân sự
+=======
+>>>>>>> eb9fef72bc1e4876844bf2c049d97a645481b01a
