@@ -1,6 +1,6 @@
 ﻿<div align="center">
   <a href="https://nestjs.com/" target="_blank">
-    <img src="https://nestjs.com/img/logo-mac.svg" alt="NestJS Logo" width="180" />
+    <img src="https://raw.githubusercontent.com/nestjs/nest/master/logo-mac.svg" alt="NestJS Logo" width="180" />
   </a>
   
   <h1>🏢 ITGlobal - Chấm Công & Quản Trị Nhân Sự (Backend)</h1>
