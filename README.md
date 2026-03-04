@@ -1,93 +1,65 @@
-﻿# ITGlobal - Cham Cong & Quan Tri Nhan Su (Backend)
+﻿<div align="center">
+  <a href="https://nestjs.com/" target="_blank">
+    <img src="https://nestjs.com/img/logo-mac.svg" alt="NestJS Logo" width="180" />
+  </a>
+  
+  <h1>🏢 ITGlobal - Chấm Công & Quản Trị Nhân Sự (Backend)</h1>
+  
+  <p><i>Backend API mạnh mẽ cho hệ thống chấm công (hỗ trợ Face ID), quản lý nhân sự và báo cáo doanh nghiệp.</i></p>
 
-Backend API cho he thong cham cong, quan ly nhan su va bao cao doanh nghiep.
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white" alt="JWT" />
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" />
+</div>
 
-## 1) Tong quan du an
-- Muc tieu: So hoa quy trinh cham cong, nghi phep, tang ca, tinh luong va tong hop bao cao.
-- Doi tuong su dung: Nhan vien, quan ly phong ban, bo phan HR.
-- Gia tri kinh doanh:
-  - Giam thao tac thu cong va sai sot trong tinh cong.
-  - Tang toc do tong hop du lieu cham cong - luong.
-  - Ho tro ra quyet dinh qua dashboard va bao cao.
+<hr />
 
-## 2) Diem noi bat ky thuat
-- Kien truc module ro rang theo domain (`nhanvien`, `chamcong`, `luong`, `dashboard`, ...).
-- Xac thuc va phan quyen bang JWT (`passport-jwt`).
-- Validation input toan cuc bang `ValidationPipe` + DTO.
-- CORS linh hoat cho localhost, LAN IP, Vercel va domain khai bao qua ENV.
-- Tuong thich PostgreSQL (ho tro SSL cho moi truong cloud nhu Neon).
-- Ho tro email thong bao, xuat file bao cao, va module AI.
+## 🎯 1. Tổng quan dự án
+- **Mục tiêu:** Số hóa quy trình chấm công, nghỉ phép, tăng ca, tính lương và tổng hợp báo cáo.
+- **Đối tượng sử dụng:** Nhân viên, quản lý phòng ban, bộ phận HR.
+- **Giá trị kinh doanh:**
+  - Giảm thao tác thủ công và sai sót trong tính công.
+  - Tăng tốc độ tổng hợp dữ liệu chấm công - lương.
+  - Hỗ trợ ra quyết định qua dashboard và báo cáo.
 
-## 3) Cong nghe su dung
-- Framework: NestJS 11 (TypeScript)
-- Database: PostgreSQL + TypeORM
-- Auth: Passport JWT
-- Tich hop: Nodemailer, ExcelJS, PDFMake, OpenAI SDK, Face API
-- Van hanh: dotenv, CORS, static assets (uploads)
+## ✨ 2. Điểm nổi bật kỹ thuật
+- **Kiến trúc Module:** Phân chia rõ ràng theo domain (`nhanvien`, `chamcong`, `luong`, `dashboard`, ...).
+- **Bảo mật:** Xác thực và phân quyền bằng JWT (`passport-jwt`).
+- **Data Validation:** Validate input toàn cục bằng `ValidationPipe` + DTO.
+- **Bảo mật & Network:** CORS linh hoạt cho localhost, LAN IP, Vercel và domain khai báo qua ENV.
+- **Database:** Tương thích PostgreSQL (hỗ trợ SSL cho môi trường cloud như Neon).
+- **Tính năng mở rộng:** Hỗ trợ email thông báo, xuất file báo cáo (Excel/PDF), và module AI tích hợp nhận diện khuôn mặt.
 
-## 4) Cau truc chuc nang chinh
-- `auth`: Dang nhap, xac thuc, JWT strategy.
-- `nhanvien`: Quan ly nhan su va trang thai tai khoan.
-- `phongban`: Quan ly phong ban.
-- `calamviec`: Cau hinh ca lam.
-- `chamcong`: Cham cong va tong hop cong.
-- `nghi-phep`: Xu ly don nghi phep.
-- `lam-them`: Quan ly tang ca.
-- `luong`: Tinh toan luong theo du lieu cham cong.
-- `baocao` + `dashboard`: Bao cao va thong ke truc quan.
-- `ai`: Cac nghiep vu ho tro AI.
+## 🚀 3. Công nghệ sử dụng
+- **Framework:** NestJS 11 (TypeScript)
+- **Database:** PostgreSQL + TypeORM
+- **Auth:** Passport JWT
+- **Tích hợp:** Nodemailer, ExcelJS, PDFMake, OpenAI SDK, Face API
+- **Vận hành:** dotenv, CORS, static assets (uploads)
 
-## 5) Huong dan cai dat
-### Yeu cau
+## 📂 4. Cấu trúc chức năng chính
+| Module | Chức năng |
+| :--- | :--- |
+| 🔐 `auth` | Đăng nhập, xác thực, JWT strategy. |
+| 🧑‍💼 `nhanvien` | Quản lý nhân sự và trạng thái tài khoản. |
+| 🏢 `phongban` | Quản lý phòng ban. |
+| ⏰ `calamviec` | Cấu hình ca làm việc. |
+| 📸 `chamcong` | Chấm công (hỗ trợ Face ID) và tổng hợp công. |
+| 🏖️ `nghi-phep` | Xử lý đơn xin nghỉ phép. |
+| ⏳ `lam-them` | Quản lý tăng ca. |
+| 💰 `luong` | Tính toán lương theo dữ liệu chấm công. |
+| 📊 `baocao` / `dashboard` | Báo cáo và thống kê trực quan. |
+| 🤖 `ai` | Các nghiệp vụ hỗ trợ AI & Face API. |
+
+## ⚙️ 5. Hướng dẫn cài đặt
+
+### Yêu cầu hệ thống
 - Node.js 18+
 - npm 9+
 - PostgreSQL
 
-### Cai dependencies
+### Cài đặt dependencies
 ```bash
 npm install
-```
-
-### Bien moi truong toi thieu (`.env`)
-```env
-DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
-PORT=3000
-FRONTEND_ORIGINS=http://localhost:3001,https://your-frontend.vercel.app
-JWT_SECRET=your_jwt_secret
-```
-
-## 6) Chay du an
-```bash
-# development
-npm run start:dev
-
-# build
-npm run build
-
-# production
-npm run start:prod
-```
-
-Mac dinh API chay tai `http://localhost:3000`.
-
-## 7) Test va chat luong ma nguon
-```bash
-npm run test
-npm run test:e2e
-npm run test:cov
-npm run lint
-```
-
-## 8) Dinh huong demo cho recruiter
-De ban demo an tuong hon khi phong van, nen ket hop backend nay voi frontend de trinh bay:
-- Dashboard KPI cham cong theo phong ban.
-- Luong moi thang va bien dong tang ca.
-- Quy trinh duyet nghi phep (tu tao don den phe duyet).
-- Export bao cao va email thong bao.
-
-## 9) Tac gia va thong tin du an
-- Team: Nhom_05
-- Mon hoc/chu de: He thong cham cong va quan tri nhan su
-
----
-Neu ban can, minh co the tiep tuc lam lai `frontend/README.md` theo cung format portfolio de bo ho so du an dong bo va chuyen nghiep hon.
