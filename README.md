@@ -107,10 +107,10 @@ npm run lint        # Chạy Linter kiểm tra lỗi format code
 - Báo cáo: Export file Excel lương mỗi tháng và biến động tăng ca.
 
 ![Màn hình Dashboard](https://github.com/user-attachments/assets/6fe7c11c-8b1d-4060-8174-cdebb245ade8)
-                  *Hình 1: Giao diện Dashboard thống kê KPI và quản trị nhân sự.*
+*Hình 1: Giao diện Dashboard thống kê KPI và quản trị nhân sự.*
 
 ![Màn hình Trang Chấm Công](https://github.com/user-attachments/assets/45d363fe-e127-428f-8e05-abe3148502e5)
-                  *Hình 2: Giao diện trang chấm công tích hợp nhận diện khuôn mặt (Face ID).*
+*Hình 2: Giao diện trang chấm công tích hợp nhận diện khuôn mặt (Face ID).*
 ## 9. Tác giả & Thông tin dự án
 - Team thực hiện: Nhóm_05
 - Môn học / Chủ đề: Hệ thống chấm công và quản trị nhân sự
