@@ -88,7 +88,6 @@ npm run lint        # Chạy Linter kiểm tra lỗi format code
 - Quy trình duyệt phép: Từ lúc tạo đơn đến khi được quản lý phê duyệt.
 - Báo cáo: Export file Excel lương mỗi tháng và biến động tăng ca.
 
-(Bạn có thể chèn 1-2 ảnh chụp màn hình giao diện Dashboard hoặc màn hình chấm công Face ID vào đây để README thêm sinh động)
 
 ## 👥 9. Tác giả & Thông tin dự án
 - Team thực hiện: Nhóm_05
