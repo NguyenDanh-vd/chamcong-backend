@@ -105,7 +105,7 @@ npm run lint        # Chạy Linter kiểm tra lỗi format code
 - Dashboard KPI: Thống kê chấm công theo phòng ban.
 - Quy trình duyệt phép: Từ lúc tạo đơn đến khi được quản lý phê duyệt.
 - Báo cáo: Export file Excel lương mỗi tháng và biến động tăng ca.
-- 
+
 ![Màn hình Dashboard](https://github.com/user-attachments/assets/6fe7c11c-8b1d-4060-8174-cdebb245ade8)
 *Hình 1: Giao diện Dashboard thống kê KPI và quản trị nhân sự.*
 
