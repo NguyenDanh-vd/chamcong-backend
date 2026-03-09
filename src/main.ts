@@ -5,6 +5,7 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
+import * as bodyParser from 'body-parser';
 
 dotenv.config();
 
@@ -40,6 +41,10 @@ function isAllowedOrigin(origin?: string): boolean {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // ✅ Tăng giới hạn payload cho body parser
+  app.use(bodyParser.json({ limit: '10mb' }));
+  app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
   // ✅ Validate DTO (bảo vệ input)
   app.useGlobalPipes(
