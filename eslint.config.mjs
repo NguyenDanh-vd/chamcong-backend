@@ -26,23 +26,22 @@ export default tseslint.config(
   },
   {
     rules: {
-      // Các rule bạn đã có
+      // 🔴 TẮT lỗi Insert ⏎ của Prettier
+      'prettier/prettier': 'off',
+
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
-      
-      // BỔ SUNG: Tắt các lỗi liên quan đến biến 'any'
+
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
 
-      // BỔ SUNG: Tắt lỗi ép kiểu object sang string (ở file baocao.service)
       '@typescript-eslint/no-base-to-string': 'off',
 
-      // BỔ SUNG: Tắt/Cảnh báo các lỗi logic khác
-      '@typescript-eslint/require-await': 'off',     // Hàm async không có await
-      '@typescript-eslint/no-require-imports': 'off', // Dùng cú pháp require() thay vì import
-      '@typescript-eslint/no-unused-vars': 'warn',    // Khai báo biến nhưng không xài
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
     },
   },
 );

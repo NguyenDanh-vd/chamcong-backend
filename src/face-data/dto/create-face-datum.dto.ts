@@ -1,4 +1,4 @@
-import { IsArray, ArrayMinSize, ArrayMaxSize, IsNumber } from 'class-validator';
+import { IsArray, ArrayMinSize, ArrayMaxSize, IsNumber, IsString } from 'class-validator';
 
 export class CreateFaceDatumDto {
   @IsArray()
@@ -9,9 +9,8 @@ export class CreateFaceDatumDto {
 
 export class RegisterFaceDto {
   @IsArray()
-  @ArrayMinSize(128)
-  @ArrayMaxSize(128)
-  faceDescriptor: number[];
+  @ArrayMinSize(1)
+  images: string[];
 }
 
 export class PointFaceDto {

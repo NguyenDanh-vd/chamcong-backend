@@ -28,27 +28,46 @@ type AuthenticatedRequest = ExpressRequest & {
 export class FaceDataController {
   constructor(private readonly faceDataService: FaceDataService) {}
 
-  /** * Đăng ký FaceID từ Mobile
-   * Body: { maNV: 1, imageBase64: "data:image/jpeg;base64,..." }
+  /**
+   * Đăng ký FaceID từ Mobile
+   * Body:
+   * { maNV: 1, imageBase64: "..." }
+   * hoặc
+   * { maNV: 1, imagesBase64: ["...", "..."] }
    */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('register-mobile')
   async registerFaceMobile(
-    @Body() body: { maNV: number; imageBase64: string },
+    @Body()
+    body: {
+      maNV: number;
+      imageBase64?: string;
+      imagesBase64?: string[];
+    },
   ) {
-    if (!body.maNV || !body.imageBase64) {
-      throw new BadRequestException(
-        'Thiếu thông tin maNV hoặc ảnh (imageBase64)',
+    if (!body.maNV) {
+      throw new BadRequestException('Thiếu thông tin maNV');
+    }
+
+    if (body.imagesBase64 && body.imagesBase64.length > 0) {
+      return this.faceDataService.registerFaceFromMobileMultiple(
+        body.maNV,
+        body.imagesBase64,
       );
     }
-    return this.faceDataService.registerFaceFromMobile(
-      body.maNV,
-      body.imageBase64,
-    );
+
+    if (body.imageBase64) {
+      return this.faceDataService.registerFaceFromMobile(
+        body.maNV,
+        body.imageBase64,
+      );
+    }
+
+    throw new BadRequestException('Thiếu ảnh (imageBase64 hoặc imagesBase64)');
   }
 
-  /** * Chấm công từ Mobile
-   * Body: { maNV: 1, imageBase64: "...", maCa: 1 }
+  /**
+   * Chấm công từ Mobile
    */
   @Roles('nhanvien')
   @Post('point-mobile')
@@ -60,6 +79,7 @@ export class FaceDataController {
         'Thiếu dữ liệu chấm công (maNV, imageBase64, maCa)',
       );
     }
+
     return this.faceDataService.pointFaceMobile(
       body.maNV,
       body.imageBase64,
@@ -67,6 +87,9 @@ export class FaceDataController {
     );
   }
 
+  /**
+   * Đăng ký face từ Web (images)
+   */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('register')
   async registerFace(
@@ -74,19 +97,52 @@ export class FaceDataController {
     @Body() dto: RegisterFaceDto,
   ) {
     const maNV = req.user?.maNV;
+
     if (!maNV) {
       throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
     }
-    return this.faceDataService.registerFace(maNV, dto.faceDescriptor);
+
+    if (!dto.images || dto.images.length === 0) {
+      throw new BadRequestException('Thiếu dữ liệu ảnh');
+    }
+
+    return this.faceDataService.registerFaceFromMobileMultiple(maNV, dto.images);
   }
 
+  /**
+   * Đăng ký nhiều ảnh (multi-angle)
+   * Frontend gửi:
+   * { images: ["base64", "base64", "base64"] }
+   */
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
+  @Post('register-multiple')
+  async registerFaceMultiple(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { images: string[] },
+  ) {
+    const maNV = req.user?.maNV;
+
+    if (!maNV) {
+      throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
+    }
+
+    if (!body.images || body.images.length === 0) {
+      throw new BadRequestException('Thiếu dữ liệu ảnh');
+    }
+
+    return this.faceDataService.registerFaceFromMobileMultiple(maNV, body.images);
+  }
+
+  /**
+   * Chấm công bằng face
+   */
   @Roles('nhanvien')
   @Post('point')
   pointFace(@Body() dto: PointFaceDto) {
     return this.faceDataService.pointFace(dto.faceDescriptor, dto.maCa);
   }
 
-  // --- CÁC API GET/DELETE CHUNG (DÙNG CHO CẢ 2) ---
+  // ===== API quản lý =====
 
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('nhanvien/:maNV')
@@ -112,13 +168,18 @@ export class FaceDataController {
     return this.faceDataService.remove(id);
   }
 
+  /**
+   * Kiểm tra face của chính mình
+   */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get('check-me')
   async checkMe(@Request() req: AuthenticatedRequest) {
     const maNV = req.user?.maNV;
+
     if (!maNV) {
       throw new BadRequestException('Không tìm thấy mã nhân viên từ token');
     }
+
     return this.faceDataService.checkFace(maNV);
   }
 }

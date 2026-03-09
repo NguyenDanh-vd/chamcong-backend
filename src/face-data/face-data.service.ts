@@ -121,6 +121,37 @@ export class FaceDataService implements OnModuleInit {
     return this.registerFace(maNV, faceDescriptor);
   }
 
+  async registerFaceFromMobileMultiple(maNV: number, imagesBase64: string[]) {
+    if (!Array.isArray(imagesBase64) || imagesBase64.length < 3) {
+      throw new BadRequestException(
+        'Can it nhat 3 anh khuon mat de tao descriptor trung binh.',
+      );
+    }
+
+    const descriptors: Float32Array[] = [];
+    let failedCount = 0;
+
+    for (const img of imagesBase64) {
+      try {
+        const desc = await this.processImageToDescriptor(img);
+        descriptors.push(desc);
+      } catch {
+        failedCount += 1;
+      }
+    }
+
+    if (descriptors.length < 3) {
+      throw new BadRequestException(
+        `Khong du anh hop le de dang ky. Thanh cong: ${descriptors.length}, that bai: ${failedCount}.`,
+      );
+    }
+
+    // Average the descriptors
+    const avgDescriptor = this.averageDescriptors(descriptors);
+    const faceDescriptor = Array.from(avgDescriptor);
+    return this.registerFace(maNV, faceDescriptor);
+  }
+
   // Chấm công từ Mobile
   async pointFaceMobile(maNV: number, imageBase64: string, maCa: number) {
     const storedFace = await this.fdRepo.findOne({
@@ -173,6 +204,20 @@ export class FaceDataService implements OnModuleInit {
       startUTC: new Date(startVN.getTime() - vnOffsetMs),
       endUTC: new Date(endVN.getTime() - vnOffsetMs),
     };
+  }
+
+  private averageDescriptors(descriptors: Float32Array[]): Float32Array {
+    if (descriptors.length === 0) throw new BadRequestException('No descriptors');
+    const length = descriptors[0].length;
+    const avg = new Float32Array(length);
+    for (let i = 0; i < length; i++) {
+      let sum = 0;
+      for (const desc of descriptors) {
+        sum += desc[i];
+      }
+      avg[i] = sum / descriptors.length;
+    }
+    return avg;
   }
 
   private euclideanDistance(desc1: number[], desc2: number[]): number {

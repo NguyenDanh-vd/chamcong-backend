@@ -18,6 +18,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './auth.guard';
 import { CreateNhanVienDto } from 'src/nhanvien/dto/create-nhanvien.dto';
 import { FaceDataService } from 'src/face-data/face-data.service';
+import { FaceLoginDto } from './dto/face-login.dto';
 
 type AuthenticatedRequest = ExpressRequest & {
   user?: {
@@ -135,12 +136,12 @@ export class AuthController {
 
   // Thêm API Login mới vào AuthController
   @Post('login-face-mobile')
-  async loginFaceMobile(@Body() body: { imageBase64: string }) {
-    if (!body.imageBase64) throw new BadRequestException('Thiếu ảnh');
+  async loginFaceMobile(@Body() dto: FaceLoginDto) {
+    if (!dto.imageBase64) throw new BadRequestException('Thiếu ảnh');
 
     // 1. Nhờ FaceDataService tìm xem đây là ai
     const maNV = await this.faceDataService.identifyUserFromImage(
-      body.imageBase64,
+      dto.imageBase64,
     );
 
     if (!maNV) {
