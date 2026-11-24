@@ -57,7 +57,12 @@ async function bootstrap() {
 
   // ✅ Cấu hình thư mục static cho upload avatar
   const uploadDir = join(__dirname, '..', 'uploads');
-  if (!existsSync(uploadDir)) mkdirSync(uploadDir);
+  if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+  const avatarsDir = join(uploadDir, 'avatars');
+  if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
+  const rootAvatarsDir = join(process.cwd(), 'uploads', 'avatars');
+  if (!existsSync(rootAvatarsDir))
+    mkdirSync(rootAvatarsDir, { recursive: true });
   app.useStaticAssets(uploadDir, { prefix: '/uploads/' });
 
   // ✅ Cấu hình CORS linh hoạt cho localhost, IP LAN, Vercel, ENV

@@ -153,7 +153,7 @@ export class FaceDataService implements OnModuleInit {
   }
 
   // Chấm công từ Mobile
-  async pointFaceMobile(maNV: number, imageBase64: string, maCa: number) {
+  async pointFaceMobile(maNV: number, imageBase64: string, maCa?: number) {
     const storedFace = await this.fdRepo.findOne({
       where: { nhanVien: { maNV } },
     });
@@ -230,12 +230,17 @@ export class FaceDataService implements OnModuleInit {
   }
 
   // Logic lưu DB (Tách ra để dùng chung)
-  private async pointFaceLogic(maNV: number, maCa: number) {
+  private async pointFaceLogic(maNV: number, maCa?: number) {
     const nv = await this.nvRepo.findOne({ where: { maNV } });
-    if (!nv) throw new NotFoundException('Nhân viên không tồn tại'); // Đã check kỹ
+    if (!nv) throw new NotFoundException('Nhân viên không tồn tại');
 
-    const ca = await this.caRepo.findOne({ where: { maCa } });
-    if (!ca) throw new NotFoundException('Ca làm việc không tồn tại');
+    let ca: CaLamViec | null = null;
+    if (maCa) {
+      ca = await this.caRepo.findOne({ where: { maCa } });
+    } else {
+      ca = await this.caRepo.findOne({ where: { trangThai: true } });
+    }
+    if (!ca) throw new BadRequestException('Hiện tại không có ca làm việc nào đang hoạt động');
 
     const { startUTC, endUTC } = this.getTodayRangeUTC();
 

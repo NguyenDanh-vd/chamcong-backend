@@ -32,7 +32,7 @@ import { VaiTro } from 'src/nhanvien/enums/vai-tro.enum';
 type AuthenticatedRequest = ExpressRequest & {
   user: {
     maNV: number;
-    vaiTro: VaiTro;
+    vaiTro?: VaiTro;
     role?: VaiTro;
   };
 };
@@ -94,7 +94,7 @@ export class NhanvienController {
       phongBan: userFromDb.phongBan,
       // Service chỉ trả về tên file, controller sẽ tạo URL đầy đủ
       avatarUrl: userFromDb.avatar
-        ? `${process.env.BASE_URL}/uploads/avatars/${userFromDb.avatar}`
+        ? `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/avatars/${userFromDb.avatar}`
         : null,
     };
   }
@@ -136,7 +136,8 @@ export class NhanvienController {
     @Body() body: { oldPassword?: string; newPassword: string },
     @Request() req: AuthenticatedRequest,
   ) {
-    if (req.user.vaiTro !== VaiTro.QUANTRIVIEN && req.user.maNV !== id) {
+    const userRole = req.user.role ?? req.user.vaiTro;
+    if (userRole !== VaiTro.QUANTRIVIEN && req.user.maNV !== id) {
       throw new ForbiddenException('Không được đổi mật khẩu của người khác');
     }
     return this.nhanvienService.updatePassword(

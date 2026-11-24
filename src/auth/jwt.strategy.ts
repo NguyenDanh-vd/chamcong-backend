@@ -11,7 +11,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       // 2. FIX: Lấy SECRET KEY TỪ BIẾN MÔI TRƯỜNG
-      secretOrKey: _configService.get<string>('JWT_SECRET_KEY'),
+      secretOrKey:
+        _configService.get<string>('JWT_SECRET_KEY') ||
+        'FALLBACK_SECRET_NEU_THIEU',
     });
   }
 

@@ -69,14 +69,14 @@ export class FaceDataController {
   /**
    * Chấm công từ Mobile
    */
-  @Roles('nhanvien')
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('point-mobile')
   async pointFaceMobile(
-    @Body() body: { maNV: number; imageBase64: string; maCa: number },
+    @Body() body: { maNV: number; imageBase64: string; maCa?: number },
   ) {
-    if (!body.maNV || !body.imageBase64 || !body.maCa) {
+    if (!body.maNV || !body.imageBase64) {
       throw new BadRequestException(
-        'Thiếu dữ liệu chấm công (maNV, imageBase64, maCa)',
+        'Thiếu dữ liệu chấm công (maNV, imageBase64)',
       );
     }
 

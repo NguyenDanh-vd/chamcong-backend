@@ -129,7 +129,8 @@ export class NhanvienService {
     const nv = await this.findOneEntity(id);
 
     // Kiểm tra quyền
-    if (currentUser && currentUser.vaiTro !== VaiTro.QUANTRIVIEN) {
+    const currentRole = currentUser?.role ?? currentUser?.vaiTro;
+    if (currentUser && currentRole !== VaiTro.QUANTRIVIEN) {
       if (currentUser.maNV !== id) {
         throw new ForbiddenException(
           'Bạn không có quyền sửa thông tin của người khác.',
@@ -142,7 +143,7 @@ export class NhanvienService {
     if (data.matKhau) data.matKhau = await bcrypt.hash(data.matKhau, 10);
 
     if (data.maPB) {
-      const pb = await this.pbRepo.findOne({ where: { maPB: data.maPB } });
+      const pb = await this.pbRepo.findOne({ where: { maPB: +data.maPB } });
       if (!pb)
         throw new NotFoundException(`Phòng ban id=${data.maPB} không tồn tại`);
       nv.phongBan = pb;
@@ -164,7 +165,8 @@ export class NhanvienService {
     if (newPassword.length < 6)
       throw new BadRequestException('Mật khẩu mới ít nhất 6 ký tự');
 
-    if (requestingUser.vaiTro !== VaiTro.QUANTRIVIEN) {
+    const requestingRole = requestingUser?.role ?? requestingUser?.vaiTro;
+    if (requestingRole !== VaiTro.QUANTRIVIEN) {
       if (requestingUser.maNV !== maNV)
         throw new ForbiddenException(
           'Bạn không có quyền đổi mật khẩu cho người khác.',

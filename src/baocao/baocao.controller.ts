@@ -1,8 +1,13 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import { BaoCaoService } from './baocao.service';
 import { Response } from 'express';
+import { JwtAuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/common/roles.guard';
+import { Roles } from 'src/common/roles.decorator';
 
 @Controller('baocao')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('quantrivien', 'nhansu')
 export class BaoCaoController {
   constructor(private readonly baoCaoService: BaoCaoService) {}
 

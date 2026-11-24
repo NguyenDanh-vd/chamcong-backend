@@ -99,15 +99,24 @@ export class CalamviecService {
             end: checkin.gioRa
               ? format(new Date(checkin.gioRa), 'HH:mm')
               : '--',
-            status: checkin.gioRa ? 'Đã check-out' : 'Đang làm việc',
+            gioVao: checkin.gioVao || null,
+            gioRa: checkin.gioRa || null,
+            status: checkin.gioRa
+              ? 'Đã check-out'
+              : checkin.trangThai === 'di-tre' ||
+                  checkin.trangThai === 'tre-va-ve-som'
+                ? 'Đi muộn'
+                : 'Đang làm việc',
           }
         : {
             id: employee.maNV,
             name: employee.hoTen,
             maNV: employee.maNV,
             shift: '--',
-            start: '--',
-            end: '--',
+            start: null,
+            end: null,
+            gioVao: null,
+            gioRa: null,
             status: 'Vắng mặt',
           };
     });

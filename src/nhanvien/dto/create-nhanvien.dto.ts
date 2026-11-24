@@ -10,6 +10,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { VaiTro } from '../enums/vai-tro.enum';
 
 export class CreateNhanVienDto {
@@ -44,6 +45,7 @@ export class CreateNhanVienDto {
   gioiTinh?: 'Nam' | 'Nữ' | 'Khác';
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(18)
   @Max(65)
@@ -54,6 +56,7 @@ export class CreateNhanVienDto {
   vaiTro?: VaiTro;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   maPB?: number;
 }

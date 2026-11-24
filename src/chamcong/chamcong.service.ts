@@ -266,7 +266,10 @@ export class ChamcongService {
     }
 
     // 3. Lấy thông tin nhân viên
-    const nhanVien = await this.nhanVienRepo.findOneBy({ maNV: maNV });
+    const nhanVien = await this.nhanVienRepo.findOne({
+      where: { maNV: maNV },
+      relations: ['faceData'],
+    });
     if (!nhanVien) throw new NotFoundException('Không tìm thấy nhân viên');
 
     // --- PHẦN SỬA CHÍNH: XỬ LÝ DỮ LIỆU DATABASE ---
@@ -274,13 +277,15 @@ export class ChamcongService {
 
     try {
       // a. Kiểm tra null/undefined
-      if (!nhanVien.faceData) {
+      if (!nhanVien.faceData || (Array.isArray(nhanVien.faceData) && nhanVien.faceData.length === 0)) {
         throw new BadRequestException(
           'Tài khoản này chưa đăng ký dữ liệu khuôn mặt (Face ID).',
         );
       }
 
-      let rawData = nhanVien.faceData;
+      let rawData: any = Array.isArray(nhanVien.faceData)
+        ? nhanVien.faceData[0]?.faceDescriptor ?? nhanVien.faceData
+        : (nhanVien.faceData as any)?.faceDescriptor ?? nhanVien.faceData;
 
       // b. Nếu DB trả về String (JSON), thì parse ra
       if (typeof rawData === 'string') {
@@ -392,23 +397,43 @@ export class ChamcongService {
   }
 
   async getTodayStatus(maNV: number) {
+    const nhanVien = await this.nhanVienRepo.findOne({
+      where: { maNV },
+      relations: ['faceData'],
+    });
+    const hasFaceRegistered =
+      !!nhanVien?.faceData &&
+      Array.isArray(nhanVien.faceData) &&
+      nhanVien.faceData.length > 0;
+
     const record = await this.getTodayRecord(maNV);
     if (!record) {
       return {
         status: 'chua-checkin',
         statusText: this.mapTrangThai('chua-checkin'),
+        hasFaceRegistered,
       };
     }
     if (!record.gioRa) {
       const gioVao = new Date(record.gioVao);
       const gioBatDau = this.parseShiftTime(record.caLamViec.gioBatDau, gioVao);
       const status = gioVao > gioBatDau ? 'di-tre' : 'dang-lam-viec';
-      return { status, statusText: this.mapTrangThai(status), record };
+      return {
+        status,
+        statusText: this.mapTrangThai(status),
+        record,
+        hasFaceRegistered,
+      };
     }
     const gioRa = new Date(record.gioRa);
     const gioKetThuc = this.parseShiftTime(record.caLamViec.gioKetThuc, gioRa);
     const status = gioRa < gioKetThuc ? 've-som' : record.trangThai || 'hop-le';
-    return { status, statusText: this.mapTrangThai(status), record };
+    return {
+      status,
+      statusText: this.mapTrangThai(status),
+      record,
+      hasFaceRegistered,
+    };
   }
 
   async createByAdmin(dto: CreateChamCongDto) {
@@ -509,6 +534,13 @@ export class ChamcongService {
       normalizedUpdateData.gioRa = new Date(updateData.gioRa);
     }
     Object.assign(chamCong, normalizedUpdateData);
+    if (chamCong.gioVao && chamCong.gioRa) {
+      chamCong.soGioLam =
+        (chamCong.gioRa.getTime() - chamCong.gioVao.getTime()) /
+        (1000 * 60 * 60);
+    } else if (!chamCong.gioRa) {
+      chamCong.soGioLam = null;
+    }
     return this.chamCongRepo.save(chamCong);
   }
 

@@ -52,6 +52,20 @@ export class DashboardService {
       },
     });
 
+    // 2.1. Đi muộn hôm nay
+    const late = await this.chamCongRepo.count({
+      where: [
+        {
+          gioVao: Between(startOfDay, endOfDay),
+          trangThai: 'di-tre',
+        },
+        {
+          gioVao: Between(startOfDay, endOfDay),
+          trangThai: 'tre-va-ve-som',
+        },
+      ],
+    });
+
     // 3. Nghỉ phép (đơn được duyệt và hôm nay nằm trong khoảng nghỉ)
     // Lưu ý: Logic này giả định bạn có entity NghiPhep với các trường và trạng thái tương ứng
     const onLeave = await this.nghiPhepRepo.count({
@@ -89,6 +103,7 @@ export class DashboardService {
     return {
       totalEmployees,
       working,
+      late,
       onLeave,
       absent: absent > 0 ? absent : 0,
     };

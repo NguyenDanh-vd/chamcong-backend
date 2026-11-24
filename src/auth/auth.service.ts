@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
@@ -222,7 +222,7 @@ export class AuthService {
       },
     );
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/reset-password?token=${token}`;
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
