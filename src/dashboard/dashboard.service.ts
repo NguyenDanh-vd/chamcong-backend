@@ -41,61 +41,45 @@ export class DashboardService {
       59,
     );
 
-    // 1. Tổng số nhân viên
-    const totalEmployees = await this.nhanVienRepo.count();
-
-    // 2. Đang làm việc (check-in hôm nay, chưa check-out)
-    const working = await this.chamCongRepo.count({
-      where: {
-        gioVao: Between(startOfDay, endOfDay),
-        gioRa: IsNull(),
-      },
-    });
-
-    // 2.1. Đi muộn hôm nay
-    const late = await this.chamCongRepo.count({
-      where: [
-        {
-          gioVao: Between(startOfDay, endOfDay),
-          trangThai: 'di-tre',
+    // Chạy song song toàn bộ truy vấn thống kê để giảm độ trễ mạng với Neon DB
+    const [totalEmployees, todayCheckins, onLeaveResult] = await Promise.all([
+      this.nhanVienRepo.count(),
+      this.chamCongRepo.find({
+        where: { gioVao: Between(startOfDay, endOfDay) },
+        relations: ['nhanVien'],
+        select: {
+          maCC: true,
+          gioRa: true,
+          trangThai: true,
+          nhanVien: { maNV: true },
         },
-        {
-          gioVao: Between(startOfDay, endOfDay),
-          trangThai: 'tre-va-ve-som',
+      }),
+      this.nghiPhepRepo.find({
+        where: {
+          ngayBatDau: LessThanOrEqual(today),
+          ngayKetThuc: MoreThanOrEqual(today),
+          trangThai: 'da-duyet',
         },
-      ],
-    });
+        relations: ['nhanVien'],
+        select: {
+          maDon: true,
+          nhanVien: { maNV: true },
+        },
+      }),
+    ]);
 
-    // 3. Nghỉ phép (đơn được duyệt và hôm nay nằm trong khoảng nghỉ)
-    // Lưu ý: Logic này giả định bạn có entity NghiPhep với các trường và trạng thái tương ứng
-    const onLeave = await this.nghiPhepRepo.count({
-      where: {
-        ngayBatDau: LessThanOrEqual(today),
-        ngayKetThuc: MoreThanOrEqual(today),
-        trangThai: 'da-duyet',
-      },
-    });
+    const working = todayCheckins.filter((c) => !c.gioRa).length;
+    const late = todayCheckins.filter(
+      (c) => c.trangThai === 'di-tre' || c.trangThai === 'tre-va-ve-som',
+    ).length;
+    const onLeave = onLeaveResult.length;
 
-    // 4. Vắng mặt
-    // Lấy mã nhân viên đã check-in hôm nay
-    const checkedInResult = await this.chamCongRepo.find({
-      where: { gioVao: Between(startOfDay, endOfDay) },
-      relations: ['nhanVien'],
-      select: { nhanVien: { maNV: true } },
-    });
-    const checkedInIds = new Set(checkedInResult.map((c) => c.nhanVien.maNV));
-
-    // Lấy mã nhân viên đang nghỉ phép hôm nay
-    const onLeaveResult = await this.nghiPhepRepo.find({
-      where: {
-        ngayBatDau: LessThanOrEqual(today),
-        ngayKetThuc: MoreThanOrEqual(today),
-        trangThai: 'da-duyet',
-      },
-      relations: ['nhanVien'],
-      select: { nhanVien: { maNV: true } },
-    });
-    const onLeaveIds = new Set(onLeaveResult.map((l) => l.nhanVien.maNV));
+    const checkedInIds = new Set(
+      todayCheckins.map((c) => c.nhanVien?.maNV).filter(Boolean),
+    );
+    const onLeaveIds = new Set(
+      onLeaveResult.map((l) => l.nhanVien?.maNV).filter(Boolean),
+    );
 
     const absent =
       totalEmployees - new Set([...checkedInIds, ...onLeaveIds]).size;

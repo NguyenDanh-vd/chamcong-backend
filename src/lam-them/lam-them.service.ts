@@ -31,7 +31,15 @@ export class LamThemService {
   async findByNhanVien(maNV: number) {
     const lamThemList = await this.ltRepo.find({
       where: { nhanVien: { maNV } },
-      relations: ['nhanVien'],
+      select: {
+        maLT: true,
+        ngayLT: true,
+        gioBatDau: true,
+        gioKetThuc: true,
+        soGio: true,
+        ghiChu: true,
+        trangThai: true,
+      },
       order: { ngayLT: 'DESC' },
     });
 
@@ -43,7 +51,6 @@ export class LamThemService {
       soGio: item.soGio,
       lyDo: item.ghiChu,
       trangThai: item.trangThai,
-      nhanVien: item.nhanVien,
     }));
   }
 
@@ -52,6 +59,19 @@ export class LamThemService {
     const lt = await this.ltRepo.findOne({
       where: { maLT },
       relations: ['nhanVien'],
+      select: {
+        maLT: true,
+        ngayLT: true,
+        gioBatDau: true,
+        gioKetThuc: true,
+        soGio: true,
+        ghiChu: true,
+        trangThai: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+        },
+      },
     });
     if (!lt) throw new NotFoundException('Không tìm thấy đơn làm thêm');
 
@@ -63,6 +83,21 @@ export class LamThemService {
   async findAll() {
     const list = await this.ltRepo.find({
       relations: ['nhanVien'],
+      select: {
+        maLT: true,
+        ngayLT: true,
+        gioBatDau: true,
+        gioKetThuc: true,
+        soGio: true,
+        ghiChu: true,
+        trangThai: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+          email: true,
+          avatar: true,
+        },
+      },
       order: { ngayLT: 'DESC' },
     });
 

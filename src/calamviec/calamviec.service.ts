@@ -73,25 +73,48 @@ export class CalamviecService {
     const endOfDay = new Date(nowInVietnam);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const todayCheckins = await this.chamCongRepo.find({
-      where: { gioVao: Between(startOfDay, endOfDay) },
-      relations: ['nhanVien', 'caLamViec'],
-    });
+    const [todayCheckins, allEmployees] = await Promise.all([
+      this.chamCongRepo.find({
+        where: { gioVao: Between(startOfDay, endOfDay) },
+        relations: ['nhanVien', 'caLamViec'],
+        select: {
+          maCC: true,
+          gioVao: true,
+          gioRa: true,
+          trangThai: true,
+          nhanVien: {
+            maNV: true,
+            hoTen: true,
+            avatar: true,
+          },
+          caLamViec: {
+            maCa: true,
+            tenCa: true,
+          },
+        },
+      }),
+      this.nhanVienRepo.find({
+        select: ['maNV', 'hoTen', 'avatar'],
+        order: { maNV: 'ASC' },
+      }),
+    ]);
 
     const checkinsMap = new Map(todayCheckins.map((c) => [c.nhanVien.maNV, c]));
-
-    const allEmployees = await this.nhanVienRepo.find({
-      select: ['maNV', 'hoTen'],
-    });
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
 
     return allEmployees.map((employee) => {
       const checkin = checkinsMap.get(employee.maNV);
+      const avatarUrl = employee.avatar
+        ? `${baseUrl}/uploads/avatars/${employee.avatar}`
+        : null;
 
       return checkin
         ? {
             id: employee.maNV,
             name: employee.hoTen,
             maNV: employee.maNV,
+            avatar: employee.avatar || null,
+            avatarUrl,
             shift: checkin.caLamViec?.tenCa || '--',
             start: checkin.gioVao
               ? format(new Date(checkin.gioVao), 'HH:mm')
@@ -112,6 +135,8 @@ export class CalamviecService {
             id: employee.maNV,
             name: employee.hoTen,
             maNV: employee.maNV,
+            avatar: employee.avatar || null,
+            avatarUrl,
             shift: '--',
             start: null,
             end: null,

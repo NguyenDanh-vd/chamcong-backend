@@ -12,16 +12,35 @@ export class PhongbanService {
     private readonly pbRepo: Repository<PhongBan>,
   ) {}
 
-  // Lấy tất cả phòng ban + danh sách nhân viên trong đó
+  // Lấy tất cả phòng ban (nhẹ, không kéo mật khẩu nhân viên)
   async findAll(): Promise<PhongBan[]> {
-    return this.pbRepo.find({ relations: ['nhanViens'] });
+    return this.pbRepo.find({
+      select: {
+        maPB: true,
+        tenPhong: true,
+        moTa: true,
+      },
+      order: { maPB: 'ASC' },
+    });
   }
 
-  // Lấy 1 phòng ban theo ID
+  // Lấy 1 phòng ban theo ID + thông tin cơ bản nhân viên
   async findOne(id: number): Promise<PhongBan> {
     const pb = await this.pbRepo.findOne({
       where: { maPB: id },
       relations: ['nhanViens'],
+      select: {
+        maPB: true,
+        tenPhong: true,
+        moTa: true,
+        nhanViens: {
+          maNV: true,
+          hoTen: true,
+          email: true,
+          vaiTro: true,
+          avatar: true,
+        },
+      },
     });
     if (!pb) throw new NotFoundException(`Không tìm thấy phòng ban id=${id}`);
     return pb;

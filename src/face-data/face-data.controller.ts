@@ -29,36 +29,38 @@ export class FaceDataController {
   constructor(private readonly faceDataService: FaceDataService) {}
 
   /**
-   * Đăng ký FaceID từ Mobile
+   * Đăng ký FaceID từ Mobile / Web
    * Body:
-   * { maNV: 1, imageBase64: "..." }
+   * { maNV?: 1, imageBase64: "..." }
    * hoặc
-   * { maNV: 1, imagesBase64: ["...", "..."] }
+   * { maNV?: 1, imagesBase64: ["...", "..."] }
    */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('register-mobile')
   async registerFaceMobile(
+    @Request() req: AuthenticatedRequest,
     @Body()
     body: {
-      maNV: number;
+      maNV?: number;
       imageBase64?: string;
       imagesBase64?: string[];
     },
   ) {
-    if (!body.maNV) {
+    const maNV = body.maNV || req.user?.maNV;
+    if (!maNV) {
       throw new BadRequestException('Thiếu thông tin maNV');
     }
 
     if (body.imagesBase64 && body.imagesBase64.length > 0) {
       return this.faceDataService.registerFaceFromMobileMultiple(
-        body.maNV,
+        Number(maNV),
         body.imagesBase64,
       );
     }
 
     if (body.imageBase64) {
       return this.faceDataService.registerFaceFromMobile(
-        body.maNV,
+        Number(maNV),
         body.imageBase64,
       );
     }
@@ -67,23 +69,25 @@ export class FaceDataController {
   }
 
   /**
-   * Chấm công từ Mobile
+   * Chấm công từ Mobile / Web
    */
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Post('point-mobile')
   async pointFaceMobile(
-    @Body() body: { maNV: number; imageBase64: string; maCa?: number },
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { maNV?: number; imageBase64: string; maCa?: number },
   ) {
-    if (!body.maNV || !body.imageBase64) {
+    const maNV = body.maNV || req.user?.maNV;
+    if (!maNV || !body.imageBase64) {
       throw new BadRequestException(
         'Thiếu dữ liệu chấm công (maNV, imageBase64)',
       );
     }
 
     return this.faceDataService.pointFaceMobile(
-      body.maNV,
+      Number(maNV),
       body.imageBase64,
-      body.maCa,
+      body.maCa ? Number(body.maCa) : undefined,
     );
   }
 

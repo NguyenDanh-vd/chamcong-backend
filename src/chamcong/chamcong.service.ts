@@ -388,6 +388,26 @@ export class ChamcongService {
       const record = await this.chamCongRepo.findOne({
         where: { nhanVien: { maNV }, gioVao: Between(startOfDay, endOfDay) },
         relations: ['caLamViec', 'nhanVien'],
+        select: {
+          maCC: true,
+          gioVao: true,
+          gioRa: true,
+          soGioLam: true,
+          trangThai: true,
+          hinhThuc: true,
+          ngayTao: true,
+          caLamViec: {
+            maCa: true,
+            tenCa: true,
+            gioBatDau: true,
+            gioKetThuc: true,
+          },
+          nhanVien: {
+            maNV: true,
+            hoTen: true,
+            avatar: true,
+          },
+        },
       });
       return record || null;
     } catch (error) {
@@ -397,16 +417,15 @@ export class ChamcongService {
   }
 
   async getTodayStatus(maNV: number) {
-    const nhanVien = await this.nhanVienRepo.findOne({
-      where: { maNV },
-      relations: ['faceData'],
-    });
-    const hasFaceRegistered =
-      !!nhanVien?.faceData &&
-      Array.isArray(nhanVien.faceData) &&
-      nhanVien.faceData.length > 0;
-
-    const record = await this.getTodayRecord(maNV);
+    const [faceCount, record] = await Promise.all([
+      this.nhanVienRepo
+        .createQueryBuilder('nv')
+        .innerJoin('nv.faceData', 'fd')
+        .where('nv.maNV = :maNV', { maNV })
+        .getCount(),
+      this.getTodayRecord(maNV),
+    ]);
+    const hasFaceRegistered = faceCount > 0;
     if (!record) {
       return {
         status: 'chua-checkin',
@@ -451,6 +470,26 @@ export class ChamcongService {
     const list = await this.chamCongRepo.find({
       where: { nhanVien: { maNV } },
       relations: ['nhanVien', 'caLamViec'],
+      select: {
+        maCC: true,
+        gioVao: true,
+        gioRa: true,
+        soGioLam: true,
+        trangThai: true,
+        hinhThuc: true,
+        ngayTao: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+          avatar: true,
+        },
+        caLamViec: {
+          maCa: true,
+          tenCa: true,
+          gioBatDau: true,
+          gioKetThuc: true,
+        },
+      },
       order: { gioVao: 'DESC' },
     });
     return list.map((c) => ({
@@ -470,8 +509,24 @@ export class ChamcongService {
   }) {
     const qb = this.chamCongRepo
       .createQueryBuilder('cc')
-      .leftJoinAndSelect('cc.nhanVien', 'nv')
-      .leftJoinAndSelect('cc.caLamViec', 'ca');
+      .leftJoin('cc.nhanVien', 'nv')
+      .leftJoin('cc.caLamViec', 'ca')
+      .select([
+        'cc.maCC',
+        'cc.gioVao',
+        'cc.gioRa',
+        'cc.soGioLam',
+        'cc.trangThai',
+        'cc.hinhThuc',
+        'cc.ngayTao',
+        'nv.maNV',
+        'nv.hoTen',
+        'nv.avatar',
+        'ca.maCa',
+        'ca.tenCa',
+        'ca.gioBatDau',
+        'ca.gioKetThuc',
+      ]);
     if (query.maNV) qb.andWhere('nv.maNV = :maNV', { maNV: query.maNV });
     if (query.hoTen)
       qb.andWhere('nv.hoTen LIKE :hoTen', { hoTen: `%${query.hoTen}%` });
@@ -499,8 +554,23 @@ export class ChamcongService {
   ) {
     const qb = this.chamCongRepo
       .createQueryBuilder('cc')
-      .leftJoinAndSelect('cc.nhanVien', 'nv')
-      .leftJoinAndSelect('cc.caLamViec', 'ca');
+      .leftJoin('cc.nhanVien', 'nv')
+      .leftJoin('cc.caLamViec', 'ca')
+      .select([
+        'cc.maCC',
+        'cc.gioVao',
+        'cc.gioRa',
+        'cc.soGioLam',
+        'cc.trangThai',
+        'cc.hinhThuc',
+        'cc.ngayTao',
+        'nv.maNV',
+        'nv.hoTen',
+        'ca.maCa',
+        'ca.tenCa',
+        'ca.gioBatDau',
+        'ca.gioKetThuc',
+      ]);
     qb.where('nv.maNV = :maNV', { maNV });
     if (query.trangThai) {
       qb.andWhere('cc.trangThai = :trangThai', { trangThai: query.trangThai });

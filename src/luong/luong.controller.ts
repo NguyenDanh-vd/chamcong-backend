@@ -19,11 +19,20 @@ import { Roles } from 'src/common/roles.decorator';
 export class LuongController {
   constructor(private readonly luongService: LuongService) {}
 
-  // 📄 GET /luong - Lấy tất cả lương
+  // 📄 GET /luong - Lấy tất cả lương (hoặc lọc theo maNV, thang)
   @Roles('nhanvien', 'nhansu', 'quantrivien')
   @Get()
-  findAll() {
+  findAll(
+    @Param() _params?: unknown,
+  ) {
     return this.luongService.findAll();
+  }
+
+  // 📄 GET /luong/nhanvien/:maNV - Lấy lương của 1 nhân viên
+  @Roles('nhanvien', 'nhansu', 'quantrivien')
+  @Get('nhanvien/:maNV')
+  findByNhanVien(@Param('maNV', ParseIntPipe) maNV: number) {
+    return this.luongService.findByNhanVien(maNV);
   }
 
   // ⚙️ POST /luong/tinh-luong - Tính lương tự động theo tháng

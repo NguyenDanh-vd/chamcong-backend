@@ -19,45 +19,128 @@ export class LuongService {
     private nhanVienRepository: Repository<NhanVien>,
   ) {}
 
-  // 📄 Lấy danh sách lương
+  // 📄 Lấy danh sách lương (chỉ lấy các cột cần thiết của nhân viên)
   async findAll(): Promise<Luong[]> {
     return this.luongRepository.find({
       relations: ['nhanVien'],
+      select: {
+        maLuong: true,
+        thang: true,
+        tongGioLam: true,
+        luongCoBan: true,
+        thuong: true,
+        phat: true,
+        lamThem: true,
+        tongLuong: true,
+        trangThai: true,
+        ngayTao: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+          email: true,
+          luongCoBan: true,
+          luongTheoGio: true,
+        },
+      },
       order: {
         nhanVien: {
-          maNV: 'ASC', // 🔹 sắp xếp theo mã nhân viên
+          maNV: 'ASC',
         },
       },
     });
   }
 
-  // ⚙️ Tính lương tự động dựa trên chấm công (chỉ tạo 1 bản/tháng/nhân viên)
-  async tinhLuongTuDong(thang: string) {
-    const nhanVienList = await this.nhanVienRepository.find({
-      relations: ['luong'],
-    });
-    const chamCongList = await this.chamCongRepository.find({
+  // 📄 Lấy lương của 1 nhân viên cụ thể
+  async findByNhanVien(maNV: number): Promise<Luong[]> {
+    return this.luongRepository.find({
+      where: { nhanVien: { maNV } },
       relations: ['nhanVien'],
+      select: {
+        maLuong: true,
+        thang: true,
+        tongGioLam: true,
+        luongCoBan: true,
+        thuong: true,
+        phat: true,
+        lamThem: true,
+        tongLuong: true,
+        trangThai: true,
+        ngayTao: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+        },
+      },
+      order: {
+        thang: 'DESC',
+      },
     });
+  }
+
+  // ⚙️ Tính lương tự động dựa trên chấm công (tối ưu truy vấn theo tháng + batch save)
+  async tinhLuongTuDong(thang: string) {
+    const [yearStr, monthStr] = (thang || '').split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const [nhanVienList, chamCongList, existingLuongList] = await Promise.all([
+      this.nhanVienRepository.find({
+        select: ['maNV', 'hoTen', 'luongCoBan', 'luongTheoGio'],
+      }),
+      this.chamCongRepository
+        .createQueryBuilder('cc')
+        .leftJoin('cc.nhanVien', 'nv')
+        .select(['cc.maCC', 'cc.gioVao', 'cc.gioRa', 'cc.soGioLam', 'nv.maNV'])
+        .where('cc.gioVao >= :startDate AND cc.gioVao <= :endDate', {
+          startDate,
+          endDate,
+        })
+        .andWhere('cc.gioRa IS NOT NULL')
+        .getMany(),
+      this.luongRepository.find({
+        where: { thang },
+        relations: ['nhanVien'],
+        select: {
+          maLuong: true,
+          thang: true,
+          tongGioLam: true,
+          luongCoBan: true,
+          thuong: true,
+          phat: true,
+          lamThem: true,
+          tongLuong: true,
+          trangThai: true,
+          nhanVien: {
+            maNV: true,
+          },
+        },
+      }),
+    ]);
+
+    const hoursByEmployee = new Map<number, number>();
+    for (const cc of chamCongList) {
+      const maNV = cc.nhanVien?.maNV;
+      if (!maNV) continue;
+      hoursByEmployee.set(
+        maNV,
+        (hoursByEmployee.get(maNV) || 0) + (cc.soGioLam || 0),
+      );
+    }
+
+    const existingLuongMap = new Map<number, Luong>();
+    for (const l of existingLuongList) {
+      if (l.nhanVien?.maNV) {
+        existingLuongMap.set(l.nhanVien.maNV, l);
+      }
+    }
 
     let tongLuongHeThong = 0;
+    const recordsToSave: Luong[] = [];
 
     for (const nv of nhanVienList) {
-      // ✅ Lọc chấm công đúng tháng
-      const chamCongNV = chamCongList.filter(
-        (c) =>
-          c.nhanVien.maNV === nv.maNV &&
-          c.gioVao &&
-          c.gioRa &&
-          c.gioVao.getMonth() + 1 === Number(thang.split('-')[1]) &&
-          c.gioVao.getFullYear() === Number(thang.split('-')[0]),
-      );
-
-      const tongGio = chamCongNV.reduce(
-        (tong, item) => tong + (item.soGioLam || 0),
-        0,
-      );
-
+      const tongGio = hoursByEmployee.get(nv.maNV) || 0;
       const luongCoBan = nv.luongCoBan || 10000000;
       const luongTheoGio = nv.luongTheoGio || 30000;
 
@@ -70,27 +153,17 @@ export class LuongService {
 
       tongLuongHeThong += tongLuong;
 
-      // ✅ Kiểm tra xem đã có lương tháng này chưa
-      const existingLuong = await this.luongRepository.findOne({
-        where: {
-          nhanVien: { maNV: nv.maNV },
-          thang,
-        },
-        relations: ['nhanVien'],
-      });
+      const existingLuong = existingLuongMap.get(nv.maNV);
 
       if (existingLuong) {
-        // 🔹 Cập nhật lương cũ
         existingLuong.tongGioLam = tongGio;
         existingLuong.luongCoBan = luongCoBan;
         existingLuong.thuong = thuong;
         existingLuong.phat = phat;
         existingLuong.lamThem = lamThem;
         existingLuong.tongLuong = tongLuong;
-
-        await this.luongRepository.save(existingLuong);
+        recordsToSave.push(existingLuong);
       } else {
-        // 🔹 Tạo mới nếu chưa có
         const luong = this.luongRepository.create({
           nhanVien: nv,
           thang,
@@ -102,9 +175,12 @@ export class LuongService {
           tongLuong,
           trangThai: 'chua-tra',
         });
-
-        await this.luongRepository.save(luong);
+        recordsToSave.push(luong);
       }
+    }
+
+    if (recordsToSave.length > 0) {
+      await this.luongRepository.save(recordsToSave);
     }
 
     return {

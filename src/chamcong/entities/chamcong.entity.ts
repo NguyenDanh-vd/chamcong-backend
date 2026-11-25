@@ -5,11 +5,14 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 import { CaLamViec } from 'src/calamviec/entities/calamviec.entity';
 
 @Entity('chamCong')
+@Index(['gioVao'])
+@Index(['trangThai'])
 export class ChamCong {
   @PrimaryGeneratedColumn()
   maCC: number;

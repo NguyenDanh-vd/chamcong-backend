@@ -5,10 +5,13 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 
 @Entity('lamThem')
+@Index(['ngayLT'])
+@Index(['trangThai'])
 export class LamThem {
   @PrimaryGeneratedColumn()
   maLT: number;

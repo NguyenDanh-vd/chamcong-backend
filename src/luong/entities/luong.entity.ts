@@ -6,11 +6,13 @@ import {
   JoinColumn,
   CreateDateColumn,
   Unique,
+  Index,
 } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 
 @Entity('luong')
 @Unique(['nhanVien', 'thang']) // 🔹 Ràng buộc: 1 nhân viên chỉ có 1 bản lương mỗi tháng
+@Index(['thang'])
 export class Luong {
   @PrimaryGeneratedColumn()
   maLuong: number;

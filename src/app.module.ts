@@ -48,7 +48,13 @@ import { LuongModule } from './luong/luong.module';
           autoLoadEntities: true,
           synchronize: false,
           ssl: useSSL ? { rejectUnauthorized: false } : false,
-          ...(useSSL ? { extra: { ssl: { rejectUnauthorized: false } } } : {}),
+          extra: {
+            max: 15,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 10000,
+            keepAlive: true,
+            ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {}),
+          },
         };
       },
     }),

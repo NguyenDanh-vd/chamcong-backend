@@ -31,6 +31,14 @@ export class NghiPhepService {
   async getByNhanVien(maNV: number): Promise<NghiPhep[]> {
     return this.npRepo.find({
       where: { nhanVien: { maNV } },
+      select: {
+        maDon: true,
+        ngayBatDau: true,
+        ngayKetThuc: true,
+        lyDo: true,
+        trangThai: true,
+        ngayTao: true,
+      },
       order: { ngayTao: 'DESC' },
     });
   }
@@ -38,6 +46,20 @@ export class NghiPhepService {
   async getAll(): Promise<NghiPhep[]> {
     return this.npRepo.find({
       relations: ['nhanVien'],
+      select: {
+        maDon: true,
+        ngayBatDau: true,
+        ngayKetThuc: true,
+        lyDo: true,
+        trangThai: true,
+        ngayTao: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+          email: true,
+          avatar: true,
+        },
+      },
       order: { ngayTao: 'DESC' },
     });
   }
@@ -47,6 +69,18 @@ export class NghiPhepService {
     const don = await this.npRepo.findOne({
       where: { maDon },
       relations: ['nhanVien'],
+      select: {
+        maDon: true,
+        ngayBatDau: true,
+        ngayKetThuc: true,
+        lyDo: true,
+        trangThai: true,
+        ngayTao: true,
+        nhanVien: {
+          maNV: true,
+          hoTen: true,
+        },
+      },
     });
     if (!don) throw new NotFoundException('Không tìm thấy đơn nghỉ phép');
     don.trangThai = trangThai;

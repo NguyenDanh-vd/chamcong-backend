@@ -47,64 +47,86 @@ export class BaoCaoService {
     maNV?: number,
     maPB?: number,
   ): Promise<ReportItem[]> {
-    const chamCongQuery = this.ccRepo.createQueryBuilder('cc');
-    this.filterByNhanVien(chamCongQuery, 'cc', maNV, maPB);
-    chamCongQuery.where(
-      'EXTRACT(MONTH FROM cc.gioVao) = :thang AND EXTRACT(YEAR FROM cc.gioVao) = :nam',
-      { thang, nam },
-    );
-    const chamCong = await chamCongQuery.getMany();
+    const chamCongQuery = this.ccRepo
+      .createQueryBuilder('cc')
+      .leftJoin('cc.nhanVien', 'nv')
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['cc.maCC', 'cc.gioVao', 'nv.maNV'])
+      .where(
+        'EXTRACT(MONTH FROM cc.gioVao) = :thang AND EXTRACT(YEAR FROM cc.gioVao) = :nam',
+        { thang, nam },
+      );
+    if (maNV) chamCongQuery.andWhere('nv.maNV = :maNV', { maNV });
+    if (maPB) chamCongQuery.andWhere('pb.maPB = :maPB', { maPB });
 
-    const nghiPhepQuery = this.npRepo.createQueryBuilder('np');
-    this.filterByNhanVien(nghiPhepQuery, 'np', maNV, maPB);
-    nghiPhepQuery.where(
-      'EXTRACT(MONTH FROM np.ngayBatDau) = :thang AND EXTRACT(YEAR FROM np.ngayBatDau) = :nam',
-      { thang, nam },
-    );
-    const nghiPhep = await nghiPhepQuery.getMany();
+    const nghiPhepQuery = this.npRepo
+      .createQueryBuilder('np')
+      .leftJoin('np.nhanVien', 'nv')
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['np.maDon', 'np.ngayBatDau', 'np.ngayKetThuc', 'nv.maNV'])
+      .where(
+        'EXTRACT(MONTH FROM np.ngayBatDau) = :thang AND EXTRACT(YEAR FROM np.ngayBatDau) = :nam',
+        { thang, nam },
+      );
+    if (maNV) nghiPhepQuery.andWhere('nv.maNV = :maNV', { maNV });
+    if (maPB) nghiPhepQuery.andWhere('pb.maPB = :maPB', { maPB });
 
-    const lamThemQuery = this.ltRepo.createQueryBuilder('lt');
-    this.filterByNhanVien(lamThemQuery, 'lt', maNV, maPB);
-    lamThemQuery.where(
-      'EXTRACT(MONTH FROM lt.ngayLT) = :thang AND EXTRACT(YEAR FROM lt.ngayLT) = :nam',
-      { thang, nam },
-    );
-    const lamThem = await lamThemQuery.getMany();
+    const lamThemQuery = this.ltRepo
+      .createQueryBuilder('lt')
+      .leftJoin('lt.nhanVien', 'nv')
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['lt.maLT', 'lt.soGio', 'lt.ngayLT', 'nv.maNV'])
+      .where(
+        'EXTRACT(MONTH FROM lt.ngayLT) = :thang AND EXTRACT(YEAR FROM lt.ngayLT) = :nam',
+        { thang, nam },
+      );
+    if (maNV) lamThemQuery.andWhere('nv.maNV = :maNV', { maNV });
+    if (maPB) lamThemQuery.andWhere('pb.maPB = :maPB', { maPB });
 
-    // Lấy danh sách nhân viên để đảm bảo ai cũng có trong báo cáo
     const nhanVienQuery = this.nvRepo
       .createQueryBuilder('nv')
-      .leftJoinAndSelect('nv.phongBan', 'pb');
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['nv.maNV', 'nv.hoTen', 'pb.maPB']);
     if (maNV) nhanVienQuery.where('nv.maNV = :maNV', { maNV });
     if (maPB) nhanVienQuery.andWhere('pb.maPB = :maPB', { maPB });
-    const nhanVienList = await nhanVienQuery.getMany();
 
-    const baoCaoTongHop = nhanVienList.map((nv) => {
-      const ngayCong = chamCong.filter(
-        (cc) => cc.nhanVien?.maNV === nv.maNV,
-      ).length;
-      const ngayNghi = nghiPhep
-        .filter((np) => np.nhanVien?.maNV === nv.maNV)
-        .reduce((total, np) => {
-          const start = new Date(np.ngayBatDau);
-          const end = new Date(np.ngayKetThuc);
-          const diffTime = Math.abs(end.getTime() - start.getTime());
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-          return total + diffDays;
-        }, 0);
-      const gioLamThem = lamThem
-        .filter((lt) => lt.nhanVien?.maNV === nv.maNV)
-        .reduce((total, lt) => total + (lt.soGio || 0), 0);
+    const [chamCong, nghiPhep, lamThem, nhanVienList] = await Promise.all([
+      chamCongQuery.getMany(),
+      nghiPhepQuery.getMany(),
+      lamThemQuery.getMany(),
+      nhanVienQuery.getMany(),
+    ]);
 
-      return {
-        hoTen: nv.hoTen,
-        ngayCong,
-        ngayNghi,
-        gioLamThem,
-      };
-    });
+    const ngayCongMap = new Map<number, number>();
+    for (const cc of chamCong) {
+      const id = cc.nhanVien?.maNV;
+      if (id) ngayCongMap.set(id, (ngayCongMap.get(id) || 0) + 1);
+    }
 
-    return baoCaoTongHop;
+    const ngayNghiMap = new Map<number, number>();
+    for (const np of nghiPhep) {
+      const id = np.nhanVien?.maNV;
+      if (!id) continue;
+      const start = new Date(np.ngayBatDau);
+      const end = new Date(np.ngayKetThuc);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      ngayNghiMap.set(id, (ngayNghiMap.get(id) || 0) + diffDays);
+    }
+
+    const gioLamThemMap = new Map<number, number>();
+    for (const lt of lamThem) {
+      const id = lt.nhanVien?.maNV;
+      if (!id) continue;
+      gioLamThemMap.set(id, (gioLamThemMap.get(id) || 0) + (lt.soGio || 0));
+    }
+
+    return nhanVienList.map((nv) => ({
+      hoTen: nv.hoTen,
+      ngayCong: ngayCongMap.get(nv.maNV) || 0,
+      ngayNghi: ngayNghiMap.get(nv.maNV) || 0,
+      gioLamThem: gioLamThemMap.get(nv.maNV) || 0,
+    }));
   }
 
   // ==================== BÁO CÁO NĂM ====================
@@ -113,54 +135,77 @@ export class BaoCaoService {
     maNV?: number,
     maPB?: number,
   ): Promise<ReportItem[]> {
-    const chamCongQuery = this.ccRepo.createQueryBuilder('cc');
-    this.filterByNhanVien(chamCongQuery, 'cc', maNV, maPB);
-    chamCongQuery.where('EXTRACT(YEAR FROM cc.gioVao) = :nam', { nam });
-    const chamCong = await chamCongQuery.getMany();
+    const chamCongQuery = this.ccRepo
+      .createQueryBuilder('cc')
+      .leftJoin('cc.nhanVien', 'nv')
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['cc.maCC', 'cc.gioVao', 'nv.maNV'])
+      .where('EXTRACT(YEAR FROM cc.gioVao) = :nam', { nam });
+    if (maNV) chamCongQuery.andWhere('nv.maNV = :maNV', { maNV });
+    if (maPB) chamCongQuery.andWhere('pb.maPB = :maPB', { maPB });
 
-    const nghiPhepQuery = this.npRepo.createQueryBuilder('np');
-    this.filterByNhanVien(nghiPhepQuery, 'np', maNV, maPB);
-    nghiPhepQuery.where('EXTRACT(YEAR FROM np.ngayBatDau) = :nam', { nam });
-    const nghiPhep = await nghiPhepQuery.getMany();
+    const nghiPhepQuery = this.npRepo
+      .createQueryBuilder('np')
+      .leftJoin('np.nhanVien', 'nv')
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['np.maDon', 'np.ngayBatDau', 'np.ngayKetThuc', 'nv.maNV'])
+      .where('EXTRACT(YEAR FROM np.ngayBatDau) = :nam', { nam });
+    if (maNV) nghiPhepQuery.andWhere('nv.maNV = :maNV', { maNV });
+    if (maPB) nghiPhepQuery.andWhere('pb.maPB = :maPB', { maPB });
 
-    const lamThemQuery = this.ltRepo.createQueryBuilder('lt');
-    this.filterByNhanVien(lamThemQuery, 'lt', maNV, maPB);
-    lamThemQuery.where('EXTRACT(YEAR FROM lt.ngayLT) = :nam', { nam });
-    const lamThem = await lamThemQuery.getMany();
+    const lamThemQuery = this.ltRepo
+      .createQueryBuilder('lt')
+      .leftJoin('lt.nhanVien', 'nv')
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['lt.maLT', 'lt.soGio', 'lt.ngayLT', 'nv.maNV'])
+      .where('EXTRACT(YEAR FROM lt.ngayLT) = :nam', { nam });
+    if (maNV) lamThemQuery.andWhere('nv.maNV = :maNV', { maNV });
+    if (maPB) lamThemQuery.andWhere('pb.maPB = :maPB', { maPB });
 
     const nhanVienQuery = this.nvRepo
       .createQueryBuilder('nv')
-      .leftJoinAndSelect('nv.phongBan', 'pb');
+      .leftJoin('nv.phongBan', 'pb')
+      .select(['nv.maNV', 'nv.hoTen', 'pb.maPB']);
     if (maNV) nhanVienQuery.where('nv.maNV = :maNV', { maNV });
     if (maPB) nhanVienQuery.andWhere('pb.maPB = :maPB', { maPB });
-    const nhanVienList = await nhanVienQuery.getMany();
 
-    const baoCaoTongHop = nhanVienList.map((nv) => {
-      const ngayCong = chamCong.filter(
-        (cc) => cc.nhanVien?.maNV === nv.maNV,
-      ).length;
-      const ngayNghi = nghiPhep
-        .filter((np) => np.nhanVien?.maNV === nv.maNV)
-        .reduce((total, np) => {
-          const start = new Date(np.ngayBatDau);
-          const end = new Date(np.ngayKetThuc);
-          const diffTime = Math.abs(end.getTime() - start.getTime());
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-          return total + diffDays;
-        }, 0);
-      const gioLamThem = lamThem
-        .filter((lt) => lt.nhanVien?.maNV === nv.maNV)
-        .reduce((total, lt) => total + (lt.soGio || 0), 0);
+    const [chamCong, nghiPhep, lamThem, nhanVienList] = await Promise.all([
+      chamCongQuery.getMany(),
+      nghiPhepQuery.getMany(),
+      lamThemQuery.getMany(),
+      nhanVienQuery.getMany(),
+    ]);
 
-      return {
-        hoTen: nv.hoTen,
-        ngayCong,
-        ngayNghi,
-        gioLamThem,
-      };
-    });
+    const ngayCongMap = new Map<number, number>();
+    for (const cc of chamCong) {
+      const id = cc.nhanVien?.maNV;
+      if (id) ngayCongMap.set(id, (ngayCongMap.get(id) || 0) + 1);
+    }
 
-    return baoCaoTongHop;
+    const ngayNghiMap = new Map<number, number>();
+    for (const np of nghiPhep) {
+      const id = np.nhanVien?.maNV;
+      if (!id) continue;
+      const start = new Date(np.ngayBatDau);
+      const end = new Date(np.ngayKetThuc);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      ngayNghiMap.set(id, (ngayNghiMap.get(id) || 0) + diffDays);
+    }
+
+    const gioLamThemMap = new Map<number, number>();
+    for (const lt of lamThem) {
+      const id = lt.nhanVien?.maNV;
+      if (!id) continue;
+      gioLamThemMap.set(id, (gioLamThemMap.get(id) || 0) + (lt.soGio || 0));
+    }
+
+    return nhanVienList.map((nv) => ({
+      hoTen: nv.hoTen,
+      ngayCong: ngayCongMap.get(nv.maNV) || 0,
+      ngayNghi: ngayNghiMap.get(nv.maNV) || 0,
+      gioLamThem: gioLamThemMap.get(nv.maNV) || 0,
+    }));
   }
 
   // ==================== EXPORT EXCEL ====================

@@ -30,55 +30,58 @@ export class AiService {
   // ============================================================
   async askAI(employeeId: number, question: string): Promise<string> {
     const allEmployees = await this.nhanVienRepo.find({
-      relations: ['phongBan', 'chamCong', 'nghiPhep'],
+      select: ['maNV', 'hoTen'],
     });
 
-    const namesList = allEmployees.map((nv) => nv.hoTen);
-    const matchedName = namesList.find((name) =>
-      question.toLowerCase().includes(name.toLowerCase()),
+    const matchedEmp = allEmployees.find((nv) =>
+      question.toLowerCase().includes(nv.hoTen.toLowerCase()),
     );
+    const targetMaNV = matchedEmp ? matchedEmp.maNV : employeeId;
 
-    let nhanVien: NhanVien | null = null;
-
-    if (matchedName) {
-      nhanVien =
-        allEmployees.find(
-          (nv) => nv.hoTen.toLowerCase() === matchedName.toLowerCase(),
-        ) ?? null;
-    } else {
-      nhanVien =
-        (await this.nhanVienRepo.findOne({
-          where: { maNV: employeeId },
-          relations: ['phongBan', 'chamCong', 'nghiPhep'],
-        })) ?? null;
-    }
+    const [nhanVien, tongChamCong, tongNghiPhep, chamCongGanNhat, nghiPhepGanNhat] =
+      await Promise.all([
+        this.nhanVienRepo.findOne({
+          where: { maNV: targetMaNV },
+          relations: ['phongBan'],
+          select: {
+            maNV: true,
+            hoTen: true,
+            phongBan: { maPB: true, tenPhong: true },
+          },
+        }),
+        this.chamCongRepo.count({
+          where: { nhanVien: { maNV: targetMaNV } },
+        }),
+        this.nghiPhepRepo.count({
+          where: { nhanVien: { maNV: targetMaNV } },
+        }),
+        this.chamCongRepo.findOne({
+          where: { nhanVien: { maNV: targetMaNV } },
+          select: ['maCC', 'ngayTao', 'trangThai'],
+          order: { ngayTao: 'DESC' },
+        }),
+        this.nghiPhepRepo.findOne({
+          where: { nhanVien: { maNV: targetMaNV } },
+          select: ['maDon', 'ngayTao', 'trangThai', 'ngayBatDau', 'ngayKetThuc'],
+          order: { ngayTao: 'DESC' },
+        }),
+      ]);
 
     if (!nhanVien) {
       return `❌ Không tìm thấy thông tin về ${
-        matchedName || 'nhân viên'
+        matchedEmp?.hoTen || 'nhân viên'
       } trong hệ thống.`;
     }
-
-    // Lấy dữ liệu gần nhất
-    const chamCongGanNhat = await this.chamCongRepo.findOne({
-      where: { nhanVien: { maNV: nhanVien.maNV } },
-      order: { ngayTao: 'DESC' },
-    });
-
-    const nghiPhepGanNhat = await this.nghiPhepRepo.findOne({
-      where: { nhanVien: { maNV: nhanVien.maNV } },
-      order: { ngayTao: 'DESC' },
-    });
 
     const context = `
 Thông tin nhân viên:
 - Họ tên: ${nhanVien.hoTen}
 - Phòng ban: ${nhanVien.phongBan?.tenPhong || 'Chưa có'}
-- Tổng số lần chấm công: ${nhanVien.chamCong?.length || 0}
-- Tổng số đơn nghỉ phép: ${nhanVien.nghiPhep?.length || 0}
+- Tổng số lần chấm công: ${tongChamCong}
+- Tổng số đơn nghỉ phép: ${tongNghiPhep}
 - Lần chấm công gần nhất: ${
       chamCongGanNhat
-        ? chamCongGanNhat.ngayTao.toLocaleString('vi-VN')
+        ? new Date(chamCongGanNhat.ngayTao).toLocaleString('vi-VN')
         : 'Không có'
     }
 - Trạng thái chấm công gần nhất: ${
@@ -86,9 +89,11 @@ Thông tin nhân viên:
     }
 - Nghỉ phép gần nhất: ${
       nghiPhepGanNhat
-        ? `${nghiPhepGanNhat.trangThai} (từ ${nghiPhepGanNhat.ngayBatDau?.toLocaleDateString(
-            'vi-VN',
-          )} đến ${nghiPhepGanNhat.ngayKetThuc?.toLocaleDateString('vi-VN')})`
+        ? `${nghiPhepGanNhat.trangThai} (từ ${new Date(
+            nghiPhepGanNhat.ngayBatDau,
+          ).toLocaleDateString('vi-VN')} đến ${new Date(
+            nghiPhepGanNhat.ngayKetThuc,
+          ).toLocaleDateString('vi-VN')})`
         : 'Không có đơn nghỉ'
     }
 `;
@@ -113,16 +118,38 @@ Thông tin nhân viên:
   // 🌐 HỎI AI — tổng quan toàn hệ thống (quản trị viên)
   // ============================================================
   async askAIOverview(question: string): Promise<string> {
-    const allEmployees = await this.nhanVienRepo.find({
-      relations: ['phongBan', 'chamCong', 'nghiPhep'],
-    });
+    const [allEmployees, ccCounts, npCounts] = await Promise.all([
+      this.nhanVienRepo.find({
+        relations: ['phongBan'],
+        select: {
+          maNV: true,
+          hoTen: true,
+          phongBan: { maPB: true, tenPhong: true },
+        },
+      }),
+      this.chamCongRepo
+        .createQueryBuilder('cc')
+        .select('cc.maNV', 'maNV')
+        .addSelect('COUNT(cc.maCC)', 'cnt')
+        .groupBy('cc.maNV')
+        .getRawMany<{ maNV: number; cnt: string }>(),
+      this.nghiPhepRepo
+        .createQueryBuilder('np')
+        .select('np.maNV', 'maNV')
+        .addSelect('COUNT(np.maDon)', 'cnt')
+        .groupBy('np.maNV')
+        .getRawMany<{ maNV: number; cnt: string }>(),
+    ]);
+
+    const ccMap = new Map(ccCounts.map((r) => [Number(r.maNV), Number(r.cnt)]));
+    const npMap = new Map(npCounts.map((r) => [Number(r.maNV), Number(r.cnt)]));
 
     const context = allEmployees
       .map(
         (nv) => `
 👤 ${nv.hoTen} (${nv.phongBan?.tenPhong || 'Chưa có phòng ban'}):
-- Số lần chấm công: ${nv.chamCong?.length || 0}
-- Số đơn nghỉ phép: ${nv.nghiPhep?.length || 0}`,
+- Số lần chấm công: ${ccMap.get(nv.maNV) || 0}
+- Số đơn nghỉ phép: ${npMap.get(nv.maNV) || 0}`,
       )
       .join('\n');
 
@@ -146,25 +173,38 @@ Thông tin nhân viên:
   // 📊 TÓM TẮT TRẠNG THÁI — từng nhân viên
   // ============================================================
   async summarizeEmployee(employeeId: number): Promise<string> {
-    const nhanVien = await this.nhanVienRepo.findOne({
-      where: { maNV: employeeId },
-      relations: ['chamCong', 'nghiPhep', 'phongBan'],
-    });
+    const [nhanVien, tongChamCong, tongNghi, chamCongGanNhat, nghiPhepGanNhat] =
+      await Promise.all([
+        this.nhanVienRepo.findOne({
+          where: { maNV: employeeId },
+          relations: ['phongBan'],
+          select: {
+            maNV: true,
+            hoTen: true,
+            phongBan: { maPB: true, tenPhong: true },
+          },
+        }),
+        this.chamCongRepo.count({
+          where: { nhanVien: { maNV: employeeId } },
+        }),
+        this.nghiPhepRepo.count({
+          where: { nhanVien: { maNV: employeeId } },
+        }),
+        this.chamCongRepo.findOne({
+          where: { nhanVien: { maNV: employeeId } },
+          select: ['maCC', 'ngayTao', 'trangThai'],
+          order: { ngayTao: 'DESC' },
+        }),
+        this.nghiPhepRepo.findOne({
+          where: { nhanVien: { maNV: employeeId } },
+          select: ['maDon', 'ngayTao', 'trangThai', 'ngayBatDau', 'ngayKetThuc'],
+          order: { ngayTao: 'DESC' },
+        }),
+      ]);
 
     if (!nhanVien) {
       return `Không tìm thấy nhân viên có mã ${employeeId}`;
     }
-
-    const tongChamCong = nhanVien.chamCong.length;
-    const tongNghi = nhanVien.nghiPhep.length;
-
-    const chamCongGanNhat = nhanVien.chamCong.sort(
-      (a, b) => +new Date(b.ngayTao) - +new Date(a.ngayTao),
-    )[0];
-
-    const nghiPhepGanNhat = nhanVien.nghiPhep.sort(
-      (a, b) => +new Date(b.ngayTao) - +new Date(a.ngayTao),
-    )[0];
 
     const context = `
 Tóm tắt dữ liệu nhân viên:
@@ -174,15 +214,17 @@ Tóm tắt dữ liệu nhân viên:
 - Tổng số đơn nghỉ phép: ${tongNghi}
 - Lần chấm công gần nhất: ${
       chamCongGanNhat
-        ? chamCongGanNhat.ngayTao.toLocaleString('vi-VN')
+        ? new Date(chamCongGanNhat.ngayTao).toLocaleString('vi-VN')
         : 'Không có'
     }
 - Trạng thái chấm công gần nhất: ${chamCongGanNhat?.trangThai || 'Không có'}
 - Nghỉ phép gần nhất: ${
       nghiPhepGanNhat
-        ? `${nghiPhepGanNhat.trangThai} (từ ${nghiPhepGanNhat.ngayBatDau?.toLocaleDateString(
-            'vi-VN',
-          )} đến ${nghiPhepGanNhat.ngayKetThuc?.toLocaleDateString('vi-VN')})`
+        ? `${nghiPhepGanNhat.trangThai} (từ ${new Date(
+            nghiPhepGanNhat.ngayBatDau,
+          ).toLocaleDateString('vi-VN')} đến ${new Date(
+            nghiPhepGanNhat.ngayKetThuc,
+          ).toLocaleDateString('vi-VN')})`
         : 'Không có'
     }
 `;
@@ -207,18 +249,40 @@ Tóm tắt dữ liệu nhân viên:
   // 📈 TÓM TẮT TOÀN BỘ NHÂN VIÊN (cho quản trị viên)
   // ============================================================
   async summarizeAllEmployees(): Promise<string> {
-    const employees = await this.nhanVienRepo.find({
-      relations: ['chamCong', 'nghiPhep', 'phongBan'],
-    });
+    const [employees, ccCounts, npCounts] = await Promise.all([
+      this.nhanVienRepo.find({
+        relations: ['phongBan'],
+        select: {
+          maNV: true,
+          hoTen: true,
+          phongBan: { maPB: true, tenPhong: true },
+        },
+      }),
+      this.chamCongRepo
+        .createQueryBuilder('cc')
+        .select('cc.maNV', 'maNV')
+        .addSelect('COUNT(cc.maCC)', 'cnt')
+        .groupBy('cc.maNV')
+        .getRawMany<{ maNV: number; cnt: string }>(),
+      this.nghiPhepRepo
+        .createQueryBuilder('np')
+        .select('np.maNV', 'maNV')
+        .addSelect('COUNT(np.maDon)', 'cnt')
+        .groupBy('np.maNV')
+        .getRawMany<{ maNV: number; cnt: string }>(),
+    ]);
 
     if (employees.length === 0) return 'Không có nhân viên nào trong hệ thống.';
+
+    const ccMap = new Map(ccCounts.map((r) => [Number(r.maNV), Number(r.cnt)]));
+    const npMap = new Map(npCounts.map((r) => [Number(r.maNV), Number(r.cnt)]));
 
     const summaryText = employees
       .map(
         (nv) => `
 👤 ${nv.hoTen} (${nv.phongBan?.tenPhong || 'Không rõ'}):
-- Chấm công: ${nv.chamCong?.length || 0} lần
-- Nghỉ phép: ${nv.nghiPhep?.length || 0} đơn`,
+- Chấm công: ${ccMap.get(nv.maNV) || 0} lần
+- Nghỉ phép: ${npMap.get(nv.maNV) || 0} đơn`,
       )
       .join('\n');
 

@@ -57,11 +57,11 @@ export class AuthService {
 
   async loginFace(descriptor: number[]) {
     const allFaces = await this.faceDataRepo.find({
-      relations: ['nhanVien'],
+      select: ['id', 'maNV', 'faceDescriptor'],
     });
 
     const threshold = 0.5;
-    let foundUser: NhanVien | null = null;
+    let matchedMaNV: number | null = null;
 
     for (const faceRecord of allFaces) {
       const rawDescriptor = faceRecord.faceDescriptor as any;
@@ -73,10 +73,26 @@ export class AuthService {
       const distance = this.getEuclideanDistance(descriptor, storedDescriptor);
 
       if (distance < threshold) {
-        foundUser = faceRecord.nhanVien;
+        matchedMaNV = faceRecord.maNV;
         break;
       }
     }
+
+    if (!matchedMaNV) {
+      throw new UnauthorizedException('Khuôn mặt không khớp với nhân viên nào');
+    }
+
+    const foundUser = await this.nvRepo.findOne({
+      where: { maNV: matchedMaNV },
+      select: [
+        'maNV',
+        'email',
+        'vaiTro',
+        'hoTen',
+        'avatar',
+        'trangThaiTaiKhoan',
+      ],
+    });
 
     if (!foundUser) {
       throw new UnauthorizedException('Khuôn mặt không khớp với nhân viên nào');

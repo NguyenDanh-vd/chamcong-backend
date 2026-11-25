@@ -5,11 +5,13 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
-  OneToMany,
+  Index,
 } from 'typeorm';
 import { NhanVien } from 'src/nhanvien/entities/nhanvien.entity';
 
 @Entity('nghiPhep')
+@Index(['ngayBatDau', 'ngayKetThuc'])
+@Index(['trangThai'])
 export class NghiPhep {
   @PrimaryGeneratedColumn()
   maDon: number;
@@ -32,7 +34,4 @@ export class NghiPhep {
 
   @CreateDateColumn()
   ngayTao: Date;
-
-  @OneToMany(() => NghiPhep, (np) => np.nhanVien)
-  nghiPhep: NghiPhep[];
 }

@@ -26,7 +26,26 @@ export class NhanvienService {
   async findAll(maPB?: number): Promise<NhanVien[]> {
     const query = this.nvRepo
       .createQueryBuilder('nv')
-      .leftJoinAndSelect('nv.phongBan', 'phongBan')
+      .leftJoin('nv.phongBan', 'phongBan')
+      .select([
+        'nv.maNV',
+        'nv.hoTen',
+        'nv.email',
+        'nv.soDienThoai',
+        'nv.diaChi',
+        'nv.avatar',
+        'nv.cccd',
+        'nv.ngayBatDau',
+        'nv.gioiTinh',
+        'nv.tuoi',
+        'nv.vaiTro',
+        'nv.trangThaiTaiKhoan',
+        'nv.ngayTao',
+        'nv.luongCoBan',
+        'nv.luongTheoGio',
+        'phongBan.maPB',
+        'phongBan.tenPhong',
+      ])
       .orderBy('nv.maNV', 'ASC');
 
     if (maPB) {
@@ -101,6 +120,25 @@ export class NhanvienService {
     return this.nvRepo.find({
       where: { trangThaiTaiKhoan: TrangThaiTaiKhoan.PENDING },
       relations: ['phongBan'],
+      select: {
+        maNV: true,
+        hoTen: true,
+        email: true,
+        soDienThoai: true,
+        diaChi: true,
+        avatar: true,
+        cccd: true,
+        ngayBatDau: true,
+        gioiTinh: true,
+        tuoi: true,
+        vaiTro: true,
+        trangThaiTaiKhoan: true,
+        ngayTao: true,
+        phongBan: {
+          maPB: true,
+          tenPhong: true,
+        },
+      },
       order: { ngayTao: 'ASC' },
     });
   }

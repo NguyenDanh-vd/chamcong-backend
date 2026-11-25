@@ -84,48 +84,72 @@ export class FaceDataService implements OnModuleInit {
     }
   }
 
-  // --- 3. HÀM XỬ LÝ ẢNH (MOBILE) ---
+  // --- 3. HÀM XỬ LÝ ẢNH (MOBILE / WEB) ---
   private async processImageToDescriptor(
     imageBase64: string,
   ): Promise<Float32Array> {
     if (!this.modelsLoaded) await this.loadModels();
     try {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const base64Data = imageBase64.replace(
+        /^data:image\/[a-zA-Z0-9+.-]+;base64,/,
+        '',
+      );
       const imgBuffer = Buffer.from(base64Data, 'base64');
       const img = await loadImage(imgBuffer);
 
-      const detection = await faceapi
+      let detection = await faceapi
         .detectSingleFace(
           img as unknown as HTMLImageElement,
-          new faceapi.TinyFaceDetectorOptions(),
+          new faceapi.TinyFaceDetectorOptions({
+            inputSize: 416,
+            scoreThreshold: 0.35,
+          }),
         )
         .withFaceLandmarks()
         .withFaceDescriptor();
 
+      // Fallback nếu ảnh nhỏ hoặc ánh sáng yếu
       if (!detection) {
-        throw new BadRequestException('Không tìm thấy khuôn mặt trong ảnh.');
+        detection = await faceapi
+          .detectSingleFace(
+            img as unknown as HTMLImageElement,
+            new faceapi.TinyFaceDetectorOptions({
+              inputSize: 224,
+              scoreThreshold: 0.25,
+            }),
+          )
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+      }
+
+      if (!detection) {
+        throw new BadRequestException(
+          'Không tìm thấy khuôn mặt rõ ràng trong ảnh. Vui lòng nhìn thẳng vào camera ở nơi đủ sáng.',
+        );
       }
       return detection.descriptor;
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       console.error('AI Error:', error);
-      throw new BadRequestException('Lỗi xử lý hình ảnh.');
+      throw new BadRequestException('Lỗi xử lý hình ảnh khuôn mặt.');
     }
   }
 
-  // --- 4. API CHO MOBILE (QUAN TRỌNG) ---
+  // --- 4. API CHO MOBILE & WEB ---
 
-  // Đăng ký từ Mobile
+  // Đăng ký 1 ảnh
   async registerFaceFromMobile(maNV: number, imageBase64: string) {
     const descriptorFloat32 = await this.processImageToDescriptor(imageBase64);
     const faceDescriptor = Array.from(descriptorFloat32);
     return this.registerFace(maNV, faceDescriptor);
   }
 
+  // Đăng ký nhiều ảnh (multi-angle)
   async registerFaceFromMobileMultiple(maNV: number, imagesBase64: string[]) {
-    if (!Array.isArray(imagesBase64) || imagesBase64.length < 3) {
-      throw new BadRequestException(
-        'Can it nhat 3 anh khuon mat de tao descriptor trung binh.',
-      );
+    if (!Array.isArray(imagesBase64) || imagesBase64.length === 0) {
+      throw new BadRequestException('Vui lòng chụp ít nhất 1 ảnh khuôn mặt.');
     }
 
     const descriptors: Float32Array[] = [];
@@ -140,13 +164,14 @@ export class FaceDataService implements OnModuleInit {
       }
     }
 
-    if (descriptors.length < 3) {
+    const minRequired = imagesBase64.length >= 3 ? 2 : 1;
+    if (descriptors.length < minRequired) {
       throw new BadRequestException(
-        `Khong du anh hop le de dang ky. Thanh cong: ${descriptors.length}, that bai: ${failedCount}.`,
+        `Không nhận diện đủ ảnh khuôn mặt hợp lệ (Thành công: ${descriptors.length}/${imagesBase64.length}). Vui lòng giữ mặt trong khung hình và đủ ánh sáng.`,
       );
     }
 
-    // Average the descriptors
+    // Average the valid descriptors
     const avgDescriptor = this.averageDescriptors(descriptors);
     const faceDescriptor = Array.from(avgDescriptor);
     return this.registerFace(maNV, faceDescriptor);
@@ -176,34 +201,41 @@ export class FaceDataService implements OnModuleInit {
 
   // --- 5. LOGIC CHUNG & CŨ ---
 
-  private getVietnamTime(date = new Date()) {
-    const vnOffsetMs = 7 * 60 * 60 * 1000;
-    return new Date(date.getTime() + vnOffsetMs);
+  private getTodayRangeInVietnam() {
+    const nowInVietnam = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }),
+    );
+    const startOfDay = new Date(nowInVietnam);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(nowInVietnam);
+    endOfDay.setHours(23, 59, 59, 999);
+    return { startOfDay, endOfDay };
   }
 
-  private getTodayRangeUTC() {
-    const vnNow = this.getVietnamTime();
-    const startVN = new Date(
-      vnNow.getFullYear(),
-      vnNow.getMonth(),
-      vnNow.getDate(),
-      0,
-      0,
-      0,
-    );
-    const endVN = new Date(
-      vnNow.getFullYear(),
-      vnNow.getMonth(),
-      vnNow.getDate(),
-      23,
-      59,
-      59,
-    );
-    const vnOffsetMs = 7 * 60 * 60 * 1000;
-    return {
-      startUTC: new Date(startVN.getTime() - vnOffsetMs),
-      endUTC: new Date(endVN.getTime() - vnOffsetMs),
-    };
+  private parseShiftTime(timeStr: string, refDate: Date): Date {
+    const [h, m, s] = (timeStr || '08:00:00').split(':').map(Number);
+    const d = new Date(refDate);
+    d.setHours(h || 0, m || 0, s || 0, 0);
+    return d;
+  }
+
+  private normalizeDescriptor(raw: unknown): number[] {
+    if (!raw) return [];
+    let parsed: unknown = raw;
+    if (typeof parsed === 'string') {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {
+        return [];
+      }
+    }
+    if (Array.isArray(parsed)) {
+      return parsed.map(Number);
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      return Object.values(parsed).map(Number);
+    }
+    return [];
   }
 
   private averageDescriptors(descriptors: Float32Array[]): Float32Array {
@@ -220,16 +252,18 @@ export class FaceDataService implements OnModuleInit {
     return avg;
   }
 
-  private euclideanDistance(desc1: number[], desc2: number[]): number {
-    if (desc1.length !== desc2.length) return 1.0;
+  private euclideanDistance(desc1: number[], desc2: unknown): number {
+    const normalized2 = this.normalizeDescriptor(desc2);
+    if (!desc1 || desc1.length !== normalized2.length || desc1.length === 0)
+      return 1.0;
     let sum = 0;
     for (let i = 0; i < desc1.length; i++) {
-      sum += Math.pow(desc1[i] - desc2[i], 2);
+      sum += Math.pow(desc1[i] - normalized2[i], 2);
     }
     return Math.sqrt(sum);
   }
 
-  // Logic lưu DB (Tách ra để dùng chung)
+  // Logic lưu DB (Đồng bộ hoàn toàn với ChamcongService)
   private async pointFaceLogic(maNV: number, maCa?: number) {
     const nv = await this.nvRepo.findOne({ where: { maNV } });
     if (!nv) throw new NotFoundException('Nhân viên không tồn tại');
@@ -240,21 +274,28 @@ export class FaceDataService implements OnModuleInit {
     } else {
       ca = await this.caRepo.findOne({ where: { trangThai: true } });
     }
-    if (!ca) throw new BadRequestException('Hiện tại không có ca làm việc nào đang hoạt động');
+    if (!ca)
+      throw new BadRequestException(
+        'Hiện tại không có ca làm việc nào đang hoạt động',
+      );
 
-    const { startUTC, endUTC } = this.getTodayRangeUTC();
+    const { startOfDay, endOfDay } = this.getTodayRangeInVietnam();
 
     let record = await this.chamCongRepo.findOne({
-      where: { nhanVien: { maNV }, gioVao: Between(startUTC, endUTC) },
+      where: { nhanVien: { maNV }, gioVao: Between(startOfDay, endOfDay) },
       relations: ['nhanVien', 'caLamViec'],
     });
 
     if (!record) {
+      const gioVao = new Date();
+      const gioBatDau = this.parseShiftTime(ca.gioBatDau, gioVao);
+      const trangThai = gioVao > gioBatDau ? 'di-tre' : 'hop-le';
+
       record = this.chamCongRepo.create({
-        nhanVien: nv, // Ép kiểu để tránh lỗi đỏ
+        nhanVien: nv,
         caLamViec: ca,
-        gioVao: this.getVietnamTime(),
-        trangThai: 'chua-xac-nhan',
+        gioVao,
+        trangThai,
         hinhThuc: 'faceid',
       });
       await this.chamCongRepo.save(record);
@@ -262,17 +303,30 @@ export class FaceDataService implements OnModuleInit {
     }
 
     if (!record.gioRa) {
-      const now = this.getVietnamTime();
-      if (now.getTime() - record.gioVao.getTime() < 300000) {
+      const now = new Date();
+      if (now.getTime() - new Date(record.gioVao).getTime() < 60 * 1000) {
         return {
-          message: 'Đã Check-in rồi. Vui lòng quay lại sau.',
+          message: 'Đã Check-in rồi. Vui lòng đợi 1 phút trước khi Check-out.',
           type: 'ignored',
         };
       }
       record.gioRa = now;
-      const diffMs = record.gioRa.getTime() - record.gioVao.getTime();
+      const gioKetThuc = this.parseShiftTime(
+        record.caLamViec?.gioKetThuc || ca.gioKetThuc,
+        record.gioRa,
+      );
+
+      if (record.trangThai === 'di-tre' && record.gioRa < gioKetThuc) {
+        record.trangThai = 'tre-va-ve-som';
+      } else if (record.gioRa < gioKetThuc) {
+        record.trangThai = 've-som';
+      } else if (record.trangThai !== 'di-tre') {
+        record.trangThai = 'hop-le';
+      }
+
+      const diffMs =
+        record.gioRa.getTime() - new Date(record.gioVao).getTime();
       record.soGioLam = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
-      record.trangThai = 'hop-le';
       await this.chamCongRepo.save(record);
       return { message: '✅ Check-out thành công', type: 'checkout' };
     }
@@ -304,7 +358,9 @@ export class FaceDataService implements OnModuleInit {
   private async detectEmployee(
     faceDescriptor: number[],
   ): Promise<number | null> {
-    const allFaceData = await this.fdRepo.find({ relations: ['nhanVien'] });
+    const allFaceData = await this.fdRepo.find({
+      select: ['id', 'maNV', 'faceDescriptor'],
+    });
     const threshold = 0.65; // Nới lỏng ngưỡng
 
     for (const fd of allFaceData) {
@@ -313,7 +369,7 @@ export class FaceDataService implements OnModuleInit {
           faceDescriptor,
           fd.faceDescriptor,
         );
-        if (distance < threshold) return fd.nhanVien.maNV;
+        if (distance < threshold) return fd.maNV;
       } catch (e) {
         console.error(e);
       }
@@ -323,20 +379,22 @@ export class FaceDataService implements OnModuleInit {
 
   // Helper CRUD
   async checkFace(maNV: number) {
-    const fd = await this.fdRepo.findOne({ where: { nhanVien: { maNV } } });
-    return { hasFace: !!fd };
+    const count = await this.fdRepo.count({ where: { maNV } });
+    return { hasFace: count > 0 };
   }
   async getAll() {
-    return this.fdRepo.find({ relations: ['nhanVien'] });
+    return this.fdRepo.find({
+      select: ['id', 'maNV', 'ngayTao'],
+    });
   }
   async getByNhanVien(maNV: number) {
     return this.fdRepo.find({
-      where: { nhanVien: { maNV } },
-      relations: ['nhanVien'],
+      where: { maNV },
+      select: ['id', 'maNV', 'ngayTao'],
     });
   }
   async removeByNhanVien(maNV: number) {
-    await this.fdRepo.delete({ nhanVien: { maNV } });
+    await this.fdRepo.delete({ maNV });
     return { message: `Đã xóa FaceID` };
   }
   async remove(id: number) {
@@ -349,7 +407,9 @@ export class FaceDataService implements OnModuleInit {
     // 1. Chuyển ảnh Base64 thành vector (Descriptor)
     const descriptor = await this.processImageToDescriptor(imageBase64);
 
-    const allFaces = await this.fdRepo.find({ relations: ['nhanVien'] });
+    const allFaces = await this.fdRepo.find({
+      select: ['id', 'maNV', 'faceDescriptor'],
+    });
 
     let bestMatch: { maNV: number; distance: number } | null = null;
     const threshold = 0.6;
@@ -362,7 +422,7 @@ export class FaceDataService implements OnModuleInit {
 
       if (dist < threshold) {
         if (!bestMatch || dist < bestMatch.distance) {
-          bestMatch = { maNV: face.nhanVien.maNV, distance: dist };
+          bestMatch = { maNV: face.maNV, distance: dist };
         }
       }
     }
